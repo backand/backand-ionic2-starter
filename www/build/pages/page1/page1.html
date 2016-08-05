@@ -1,11 +1,17 @@
 <ion-navbar *navbar>
-    <ion-title>Tab 1</ion-title>
+    <ion-title>Login</ion-title>
 </ion-navbar>
 
 <ion-content padding class="page1">
-    <h2>Welcome to Ionic!</h2>
-    <label>Choose authentication type:</label>
+    <h2>Authentication</h2>
 
+    <div>
+        <label *ngIf="auth_status == 'OK'"><button (click)="signOut()" class="btn btn-error">Sign Out</button>{{loggedInUser}}</label>
+    </div>
+
+    <div>
+        <label>Choose authentication type:</label>
+    </div>
 
     <ion-list>
 
@@ -28,24 +34,27 @@
     <div>
         <label [class.alert]="is_auth_error" [class.alert-danger]="is_auth_error">{{auth_status}}</label>
     </div>
+    
+
     <hr/>
-    ADD TODO: <input [value]="name" (input)="name = $event.target.value">
-    <div>
-        <button (click)="getQuote()" class="btn btn-success">Get Items</button>
-        <button (click)="postItem()" class="btn btn-warning">Post Item</button>
-    </div>
-    <br/>
-    <label>Result:</label>
+    <h2>Change Password</h2>
+    <ion-list>
+        <ion-item>
+            <ion-label floating>Old Password</ion-label>
+            <ion-input type="password" [value]="oldPassword" (input)="oldPassword = $event.target.value"></ion-input>
+        </ion-item>
+        <ion-item>
+            <ion-label floating>New Password</ion-label>
+            <ion-input type="password" [value]="newPassword" (input)="newPassword = $event.target.value"></ion-input>
+        </ion-item>
+        <ion-item>
+            <ion-label floating>Confirm Password</ion-label>
+            <ion-input type="password" [value]="confirmNewPassword" (input)="confirmNewPassword = $event.target.value"></ion-input>
+        </ion-item>
 
-    <ion-card *ngFor="#q of quoteOfTheDay">
 
-        <ion-card-header>
+        <button (click)="changePassword()" class="btn btn-success">Change Password</button>
 
-        </ion-card-header>
+    </ion-list>
 
-        <ion-card-content>
-            {{q}}
-        </ion-card-content>
-
-    </ion-card>
 </ion-content>

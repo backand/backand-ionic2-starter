@@ -1,79 +1,85 @@
 import {Component} from '@angular/core';
-import {bootstrap} from '@angular/platform-browser-dynamic';
+// import {bootstrap} from '@angular/platform-browser-dynamic';
 import 'rxjs/Rx'
-import {Http, Headers, HTTP_BINDINGS} from '@angular/http'
 import {BackandService} from '../../services/backandService'
 
 @Component({
-    templateUrl: 'build/pages/page1/page1.html',
-    providers: [BackandService]
+    templateUrl: 'build/pages/page1/page1.html'
 })
 export class Page1 {
-    name:string = 'World';
-    quoteOfTheDay:string[] = [];
+    
     username:string = 'test@angular2.com';
     password:string = 'angular2';
     auth_type:string = "N/A";
     is_auth_error:boolean = false;
     auth_status:string = null;
+    loggedInUser: string = '';
 
 
-    constructor(public backandService:BackandService) {   
+    oldPassword: string = '';
+    newPassword: string = '';
+    confirmNewPassword: string = '';
+
+
+    constructor(public backandService:BackandService) { 
+        this.auth_type = backandService.getAuthType();
+        this.auth_status = backandService.getAuthStatus();
+        this.loggedInUser = backandService.getUsername();
     }
 
 
     public getAuthTokenSimple() {
+
         this.auth_type = 'Token';
         var $obs = this.backandService.getAuthTokenSimple(this.username, this.password);
         $obs.subscribe(
-                data => {
-                    this.auth_status = 'OK';
-                    this.is_auth_error = false;
-                    
-                },
-                err => {
-                    var errorMessage = this.backandService.extractErrorMessage(err);
+            data => {
+                this.auth_status = 'OK';
+                this.is_auth_error = false;
+                this.loggedInUser = this.username;
+                this.username = null;
+                this.password = null;
+            },
+            err => {
+                var errorMessage = this.backandService.extractErrorMessage(err);
 
-                    this.auth_status = `Error: ${errorMessage}`;
-                    this.is_auth_error = true;
-                    this.logError(err)
-                },
-                () => console.log('Finish Auth'));
+                this.auth_status = `Error: ${errorMessage}`;
+                this.is_auth_error = true;
+                this.backandService.logError(err)
+            },
+            () => console.log('Finish Auth'));
     }
 
     private useAnoymousAuth() {
         this.backandService.useAnoymousAuth();
+        this.auth_status = 'OK';
         this.is_auth_error = false;
         this.auth_type = 'Anonymous';
+        this.loggedInUser = 'Anonymous';
     }
 
-    public postItem() {
-        this.backandService.postItem(this.name).subscribe(
-                data => {
-                    // add to begin of array
-                    this.quoteOfTheDay.unshift(data.description);
-                    console.log(this.quoteOfTheDay);
-                },
-                err => this.logError(err),
-                () => console.log('OK')
-            );;
+    public signOut() {
+        this.auth_status = null;
+        this.backandService.clearAuthTokenSimple();
     }
 
-    public getQuote() {
-       this.backandService.getQuote()
-            .subscribe(
-                data => {
-                    console.log("subscribe", data);
-                    this.quoteOfTheDay = data;
-                },
-                err => this.logError(err),
-                () => console.log('OK')
-            );
+
+
+    public changePassword() {
+        if (this.newPassword != this.confirmNewPassword){
+            alert('Passwords should match');
+            return;
+        }
+        var $obs = this.backandService.changePassword(this.oldPassword, this.newPassword);
+        $obs.subscribe(
+            data => {
+                alert('Password changed');
+                this.oldPassword = this.newPassword = this.confirmNewPassword = '';
+            },
+            err => {
+                this.backandService.logError(err)
+            },
+            () => console.log('Finish change password'));
     }
 
-    logError(err) {
-        console.error('Error: ' + err);
-    }
 }
-
-//bootstrap(HelloApp, [HTTP_BINDINGS]);

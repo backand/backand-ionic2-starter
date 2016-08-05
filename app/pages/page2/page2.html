@@ -1,15 +1,38 @@
 
 <ion-navbar *navbar>
   <ion-title>
-    Tab 2
+    Sign Up
   </ion-title>
 </ion-navbar>
 
 <ion-content class="page2">
-  <ion-searchbar [(ngModel)]="searchQuery" (input)="getItems($event)"></ion-searchbar>
-  <ion-list>
-    <ion-item *ngFor="let item of items">
-      {{ item }}
-    </ion-item>
-  </ion-list>
+  
+
+    <h2>Sign Up</h2>
+    <ion-list>
+        <ion-item>
+            <ion-label floating>Username</ion-label>
+            <ion-input type="email" [value]="email" (input)="email = $event.target.value"></ion-input>
+        </ion-item>
+        <ion-item>
+            <ion-label floating>First Name</ion-label>
+            <ion-input type="text" [value]="firstName" (input)="firstName = $event.target.value"></ion-input>
+        </ion-item>
+        <ion-item>
+            <ion-label floating>Last Name</ion-label>
+            <ion-input type="text" [value]="lastName" (input)="lastName = $event.target.value"></ion-input>
+        </ion-item>
+        <ion-item>
+            <ion-label floating>Password</ion-label>
+            <ion-input type="password" [value]="signUpPassword" (input)="signUpPassword = $event.target.value"></ion-input>
+        </ion-item>
+        <ion-item>
+            <ion-label floating>Confirm Password</ion-label>
+            <ion-input type="password" [value]="confirmPassword" (input)="confirmPassword = $event.target.value"></ion-input>
+        </ion-item>
+        <!-- <h4 style="color:red;" ng-bind="vm.errorMessage"></h4> -->
+
+        <button (click)="signUp()" class="btn btn-success">Sign Up</button>
+
+    </ion-list>
 </ion-content>

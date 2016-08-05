@@ -13,6 +13,7 @@ var core_1 = require('@angular/core');
 var ionic_angular_1 = require('ionic-angular');
 var ionic_native_1 = require('ionic-native');
 var tabs_1 = require('./pages/tabs/tabs');
+var backandService_1 = require('./services/backandService');
 var MyApp = (function () {
     function MyApp(platform) {
         this.platform = platform;
@@ -32,9 +33,9 @@ var MyApp = (function () {
     return MyApp;
 }());
 exports.MyApp = MyApp;
-ionic_angular_1.ionicBootstrap(MyApp);
+ionic_angular_1.ionicBootstrap(MyApp, [backandService_1.BackandService]);
 
-},{"./pages/tabs/tabs":5,"@angular/core":153,"ionic-angular":417,"ionic-native":444}],2:[function(require,module,exports){
+},{"./pages/tabs/tabs":5,"./services/backandService":6,"@angular/core":153,"ionic-angular":417,"ionic-native":444}],2:[function(require,module,exports){
 "use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
@@ -46,18 +47,24 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var core_1 = require('@angular/core');
+// import {bootstrap} from '@angular/platform-browser-dynamic';
 require('rxjs/Rx');
 var backandService_1 = require('../../services/backandService');
 var Page1 = (function () {
     function Page1(backandService) {
         this.backandService = backandService;
-        this.name = 'World';
-        this.quoteOfTheDay = [];
         this.username = 'test@angular2.com';
         this.password = 'angular2';
         this.auth_type = "N/A";
         this.is_auth_error = false;
         this.auth_status = null;
+        this.loggedInUser = '';
+        this.oldPassword = '';
+        this.newPassword = '';
+        this.confirmNewPassword = '';
+        this.auth_type = backandService.getAuthType();
+        this.auth_status = backandService.getAuthStatus();
+        this.loggedInUser = backandService.getUsername();
     }
     Page1.prototype.getAuthTokenSimple = function () {
         var _this = this;
@@ -66,49 +73,50 @@ var Page1 = (function () {
         $obs.subscribe(function (data) {
             _this.auth_status = 'OK';
             _this.is_auth_error = false;
+            _this.loggedInUser = _this.username;
+            _this.username = null;
+            _this.password = null;
         }, function (err) {
             var errorMessage = _this.backandService.extractErrorMessage(err);
             _this.auth_status = "Error: " + errorMessage;
             _this.is_auth_error = true;
-            _this.logError(err);
+            _this.backandService.logError(err);
         }, function () { return console.log('Finish Auth'); });
     };
     Page1.prototype.useAnoymousAuth = function () {
         this.backandService.useAnoymousAuth();
+        this.auth_status = 'OK';
         this.is_auth_error = false;
         this.auth_type = 'Anonymous';
+        this.loggedInUser = 'Anonymous';
     };
-    Page1.prototype.postItem = function () {
+    Page1.prototype.signOut = function () {
+        this.auth_status = null;
+        this.backandService.clearAuthTokenSimple();
+    };
+    Page1.prototype.changePassword = function () {
         var _this = this;
-        this.backandService.postItem(this.name).subscribe(function (data) {
-            // add to begin of array
-            _this.quoteOfTheDay.unshift(data.description);
-            console.log(_this.quoteOfTheDay);
-        }, function (err) { return _this.logError(err); }, function () { return console.log('OK'); });
-        ;
-    };
-    Page1.prototype.getQuote = function () {
-        var _this = this;
-        this.backandService.getQuote()
-            .subscribe(function (data) {
-            console.log("subscribe", data);
-            _this.quoteOfTheDay = data;
-        }, function (err) { return _this.logError(err); }, function () { return console.log('OK'); });
-    };
-    Page1.prototype.logError = function (err) {
-        console.error('Error: ' + err);
+        if (this.newPassword != this.confirmNewPassword) {
+            alert('Passwords should match');
+            return;
+        }
+        var $obs = this.backandService.changePassword(this.oldPassword, this.newPassword);
+        $obs.subscribe(function (data) {
+            alert('Password changed');
+            _this.oldPassword = _this.newPassword = _this.confirmNewPassword = '';
+        }, function (err) {
+            _this.backandService.logError(err);
+        }, function () { return console.log('Finish change password'); });
     };
     Page1 = __decorate([
         core_1.Component({
-            templateUrl: 'build/pages/page1/page1.html',
-            providers: [backandService_1.BackandService]
+            templateUrl: 'build/pages/page1/page1.html'
         }), 
         __metadata('design:paramtypes', [backandService_1.BackandService])
     ], Page1);
     return Page1;
 }());
 exports.Page1 = Page1;
-//bootstrap(HelloApp, [HTTP_BINDINGS]); 
 
 },{"../../services/backandService":6,"@angular/core":153,"rxjs/Rx":520}],3:[function(require,module,exports){
 "use strict";
@@ -127,36 +135,30 @@ var backandService_1 = require('../../services/backandService');
 var Page2 = (function () {
     function Page2(backandService) {
         this.backandService = backandService;
-        this.items = [];
-        this.fromServerData = [];
-        this.searchQuery = '';
-        this.items = [];
-        this.getItems('');
+        this.email = '';
+        this.firstName = '';
+        this.lastName = '';
+        this.signUpPassword = '';
+        this.confirmPassword = '';
     }
-    Page2.prototype.getItems = function (searchbar) {
+    Page2.prototype.signUp = function () {
         var _this = this;
-        this.backandService.useAnoymousAuth();
-        this.backandService.getQuote().subscribe(function (data) {
-            console.log("here");
-            _this.items = data;
-            // set q to the value of the searchbar
-            var q = searchbar.value;
-            // if the value is an empty string don't filter the items
-            if (!q || q.trim() == '') {
-                return;
-            }
-            _this.items = _this.items.filter(function (v) {
-                if (v.toLowerCase().indexOf(q.toLowerCase()) > -1) {
-                    return true;
-                }
-                return false;
-            });
-        });
+        console.log('signUp');
+        if (this.signUpPassword != this.confirmPassword) {
+            alert('Passwords should match');
+            return;
+        }
+        var $obs = this.backandService.signUp(this.email, this.signUpPassword, this.confirmPassword, this.firstName, this.lastName);
+        $obs.subscribe(function (data) {
+            alert('Sign up succeeded');
+            _this.email = _this.signUpPassword = _this.confirmPassword = _this.firstName = _this.lastName = '';
+        }, function (err) {
+            _this.backandService.logError(err);
+        }, function () { return console.log('Finish Auth'); });
     };
     Page2 = __decorate([
         core_1.Component({
-            templateUrl: 'build/pages/page2/page2.html',
-            providers: [backandService_1.BackandService]
+            templateUrl: 'build/pages/page2/page2.html'
         }), 
         __metadata('design:paramtypes', [backandService_1.BackandService])
     ], Page2);
@@ -176,20 +178,70 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var core_1 = require('@angular/core');
+var backandService_1 = require('../../services/backandService');
 var Page3 = (function () {
-    function Page3() {
+    function Page3(backandService) {
+        this.backandService = backandService;
+        this.name = 'World';
+        this.description = 'Wonderful';
+        this.items = [];
+        this.searchQuery = '';
     }
+    Page3.prototype.postItem = function () {
+        var _this = this;
+        this.backandService.postItem(this.name, this.description).subscribe(function (data) {
+            // add to begin of array
+            _this.items.unshift({ id: null, name: _this.name, description: _this.description });
+            console.log(_this.items);
+            _this.name = '';
+            _this.description = '';
+        }, function (err) { return _this.backandService.logError(err); }, function () { return console.log('OK'); });
+        ;
+    };
+    Page3.prototype.getItems = function () {
+        var _this = this;
+        this.backandService.getItems()
+            .subscribe(function (data) {
+            console.log("subscribe", data);
+            _this.items = data;
+        }, function (err) { return _this.backandService.logError(err); }, function () { return console.log('OK'); });
+    };
+    Page3.prototype.filterItems = function (searchbar) {
+        var _this = this;
+        // set q to the value of the searchbar
+        var q = searchbar;
+        // if the value is an empty string don't filter the items
+        if (!q || q.trim() == '') {
+            return;
+        }
+        else {
+            q = q.trim();
+        }
+        this.backandService.filterItems(q)
+            .subscribe(function (data) {
+            console.log("subscribe", data);
+            // this.items = data.filter((v) => {
+            //   if (v.name.toLowerCase().indexOf(q.toLowerCase()) > -1 || 
+            //       v.description.toLowerCase().indexOf(q.toLowerCase()) > -1
+            //   ) {
+            //     return true;
+            //   }
+            //   return false;
+            // });
+            _this.items = data;
+        }, function (err) { return _this.backandService.logError(err); }, function () { return console.log('OK'); });
+    };
     Page3 = __decorate([
         core_1.Component({
             templateUrl: 'build/pages/page3/page3.html'
         }), 
-        __metadata('design:paramtypes', [])
+        __metadata('design:paramtypes', [backandService_1.BackandService])
     ], Page3);
     return Page3;
 }());
 exports.Page3 = Page3;
 
-},{"@angular/core":153}],5:[function(require,module,exports){
+},{"../../services/backandService":6,"@angular/core":153}],5:[function(require,module,exports){
 "use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
@@ -242,20 +294,44 @@ var core_1 = require('@angular/core');
 var BackandService = (function () {
     function BackandService(http) {
         this.http = http;
-        this.quoteOfTheDay = [];
-        this.api_url = "https://api.backand.com";
-        this.app_name = "angular2";
+        this.api_url = 'https://api.backand.com';
+        this.urls = {
+            signup: '/1/user/signup',
+            token: '/token',
+            requestResetPassword: '/1/user/requestResetPassword',
+            resetPassword: '/1/user/resetPassword',
+            changePassword: '/1/user/changePassword',
+            socialLoginWithCode: '/1/user/PROVIDER/code',
+            socialSignupWithCode: '/1/user/PROVIDER/signupCode',
+            socialLoginWithToken: '/1/user/PROVIDER/token'
+        };
+        this.app_name = 'y201605151206';
+        this.signUpToken = '02b99b1c-d933-44ee-8ccf-85ed98e761dd';
+        this.anonymousToken = 'a45c4c85-efa0-424b-b173-e6b6b0b8c388';
         this.auth_status = "";
         this.is_auth_error = false;
-        this.auth_token = { header_name: '', header_value: '' };
+        var storedToken = localStorage.getItem('auth_token');
+        if (storedToken) {
+            this.auth_token = JSON.parse(storedToken);
+            this.auth_type = this.auth_token.header_name == 'Anonymous' ? 'Anonymous' : 'Token';
+            this.auth_status = 'OK';
+            if (this.auth_type == 'Token') {
+                this.username = localStorage.getItem('username');
+            }
+        }
+        else {
+            this.auth_token = { header_name: '', header_value: '' };
+        }
     }
-    Object.defineProperty(BackandService.prototype, "tokenUrl", {
-        get: function () {
-            return this.api_url + "/token";
-        },
-        enumerable: true,
-        configurable: true
-    });
+    BackandService.prototype.getAuthType = function () {
+        return this.auth_type;
+    };
+    BackandService.prototype.getAuthStatus = function () {
+        return this.auth_status;
+    };
+    BackandService.prototype.getUsername = function () {
+        return this.username;
+    };
     BackandService.prototype.getAuthTokenSimple = function (username, password) {
         var _this = this;
         var creds = ("username=" + username) +
@@ -265,18 +341,107 @@ var BackandService = (function () {
         console.log(creds);
         var header = new http_1.Headers();
         header.append('Content-Type', 'application/x-www-form-urlencoded');
-        var $obs = this.http.post(this.tokenUrl, creds, {
+        var url = this.api_url + this.urls.token;
+        var $obs = this.http.post(url, creds, {
             headers: header
         })
             .map(function (res) { return _this.getToken(res); });
         $obs.subscribe(function (data) {
             _this.setTokenHeader(data);
+            localStorage.setItem('username', username);
         }, function (err) {
+            console.log(err);
         }, function () { return console.log('Finish Auth'); });
+        return $obs;
+    };
+    BackandService.prototype.clearAuthTokenSimple = function () {
+        this.auth_token = { header_name: '', header_value: '' };
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('username');
+    };
+    BackandService.prototype.signUp = function (email, password, confirmPassword, firstName, lastName) {
+        var creds = {
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            password: password,
+            confirmPassword: confirmPassword
+        };
+        var header = new http_1.Headers();
+        header.append('SignUpToken', this.signUpToken);
+        var $obs = this.http.post(this.api_url + this.urls.signup, creds, {
+            headers: header
+        });
+        $obs.subscribe(function (data) {
+            console.log(data);
+        }, function (err) {
+            console.log(err);
+        }, function () { return console.log('Finish Sign Up'); });
+        return $obs;
+    };
+    BackandService.prototype.changePassword = function (oldPassword, newPassword) {
+        var creds = {
+            oldPassword: oldPassword,
+            newPassword: newPassword
+        };
+        var $obs = this.http.post(this.api_url + this.urls.changePassword, creds, {
+            headers: this.authHeader
+        }).map(function (res) {
+            // this.getToken(res);
+            console.log(res);
+        });
+        $obs.subscribe(function (data) {
+            // this.setTokenHeader(data)
+            console.log(data);
+        }, function (err) {
+            console.log(err);
+        }, function () { return console.log('Finish Change Password'); });
         return $obs;
     };
     BackandService.prototype.extractErrorMessage = function (err) {
         return JSON.parse(err._body).error_description;
+    };
+    BackandService.prototype.requestResetPassword = function (email) {
+        var creds = {
+            email: email,
+            appName: this.app_name
+        };
+        var header = new http_1.Headers();
+        header.append('SignUpToken', this.signUpToken);
+        var $obs = this.http.post(this.urls.requestResetPassword, creds, {
+            headers: header
+        }).map(function (res) {
+            // this.getToken(res);
+            console.log(res);
+        });
+        $obs.subscribe(function (data) {
+            // this.setTokenHeader(data)
+            console.log(data);
+        }, function (err) {
+            console.log(err);
+        }, function () { return console.log('Finish Request Reset Password'); });
+        return $obs;
+    };
+    BackandService.prototype.resetPassword = function (newPassword, resetToken) {
+        var creds = {
+            newPassword: newPassword,
+            resetToken: resetToken
+        };
+        var header = new http_1.Headers();
+        header.append('SignUpToken', this.signUpToken);
+        var $obs = this.http.post(this.urls.resetPassword, creds, {
+            headers: header
+        }).map(function (res) {
+            // this.getToken(res);
+            console.log(res);
+        });
+        $obs.subscribe(function (data) {
+            // this.setTokenHeader(data)
+            console.log(data);
+        }, function (err) {
+            console.log(err);
+        }, function () { return console.log('Finish Reset Password'); });
+        return $obs;
     };
     BackandService.prototype.useAnoymousAuth = function () {
         this.setAnonymousHeader();
@@ -285,12 +450,18 @@ var BackandService = (function () {
         if (jwt) {
             this.auth_token.header_name = "Authorization";
             this.auth_token.header_value = "Bearer " + jwt;
+            this.storeAuthToken(this.auth_token);
         }
     };
     BackandService.prototype.setAnonymousHeader = function () {
         this.auth_status = "OK";
         this.auth_token.header_name = "AnonymousToken";
-        this.auth_token.header_value = "08fd510a-4b52-43fa-938f-f2c841bd3106";
+        this.auth_token.header_value = this.anonymousToken;
+        this.storeAuthToken(this.auth_token);
+        localStorage.setItem('username', 'Anonymous');
+    };
+    BackandService.prototype.storeAuthToken = function (token) {
+        localStorage.setItem('auth_token', JSON.stringify(token));
     };
     BackandService.prototype.getToken = function (res) {
         console.log(res);
@@ -305,8 +476,8 @@ var BackandService = (function () {
         enumerable: true,
         configurable: true
     });
-    BackandService.prototype.postItem = function (name) {
-        var data = JSON.stringify({ description: name });
+    BackandService.prototype.postItem = function (name, description) {
+        var data = JSON.stringify({ name: name, description: description });
         return this.http.post(this.api_url + '/1/objects/todo?returnObject=true', data, {
             headers: this.authHeader
         })
@@ -316,14 +487,34 @@ var BackandService = (function () {
             return res.json();
         });
     };
-    BackandService.prototype.getQuote = function () {
+    BackandService.prototype.getItems = function () {
         return this.http.get(this.api_url + '/1/objects/todo?returnObject=true', {
             headers: this.authHeader
         })
             .retry(3)
-            .map(function (res) { return res.json().data.map(function (r) {
-            return r.description;
-        }); });
+            .map(function (res) { return res.json().data; });
+    };
+    BackandService.prototype.filterItems = function (query) {
+        var data = JSON.stringify({
+            filter: [
+                {
+                    fieldName: 'name',
+                    operator: 'contains',
+                    value: query
+                }
+            ]
+        });
+        var $obs = this.http.post(this.api_url + '/1/objects/todo?returnObject=true', data, {
+            headers: this.authHeader
+        })
+            .retry(3)
+            .map(function (res) { return res.json().data; });
+        $obs.subscribe(function (data) {
+            console.log(data);
+        }, function (err) {
+            console.log(err);
+        }, function () { return console.log('Finish Filter'); });
+        return $obs;
     };
     BackandService.prototype.logError = function (err) {
         console.error('Error: ' + err);
