@@ -37,8 +37,8 @@ export class Page1 {
                 this.auth_status = 'OK';
                 this.is_auth_error = false;
                 this.loggedInUser = this.username;
-                this.username = null;
-                this.password = null;
+                this.username = '';
+                this.password = '';
             },
             err => {
                 var errorMessage = this.backandService.extractErrorMessage(err);

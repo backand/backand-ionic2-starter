@@ -74,8 +74,8 @@ var Page1 = (function () {
             _this.auth_status = 'OK';
             _this.is_auth_error = false;
             _this.loggedInUser = _this.username;
-            _this.username = null;
-            _this.password = null;
+            _this.username = '';
+            _this.password = '';
         }, function (err) {
             var errorMessage = _this.backandService.extractErrorMessage(err);
             _this.auth_status = "Error: " + errorMessage;
@@ -190,7 +190,7 @@ var Page3 = (function () {
     Page3.prototype.postItem = function () {
         var _this = this;
         this.backandService.postItem(this.name, this.description).subscribe(function (data) {
-            // add to begin of array
+            // add to beginning of array
             _this.items.unshift({ id: null, name: _this.name, description: _this.description });
             console.log(_this.items);
             _this.name = '';
@@ -220,14 +220,6 @@ var Page3 = (function () {
         this.backandService.filterItems(q)
             .subscribe(function (data) {
             console.log("subscribe", data);
-            // this.items = data.filter((v) => {
-            //   if (v.name.toLowerCase().indexOf(q.toLowerCase()) > -1 || 
-            //       v.description.toLowerCase().indexOf(q.toLowerCase()) > -1
-            //   ) {
-            //     return true;
-            //   }
-            //   return false;
-            // });
             _this.items = data;
         }, function (err) { return _this.backandService.logError(err); }, function () { return console.log('OK'); });
     };
@@ -482,10 +474,7 @@ var BackandService = (function () {
             headers: this.authHeader
         })
             .retry(3)
-            .map(function (res) {
-            console.log(res.json());
-            return res.json();
-        });
+            .map(function (res) { return res.json(); });
     };
     BackandService.prototype.getItems = function () {
         return this.http.get(this.api_url + '/1/objects/todo?returnObject=true', {
@@ -495,26 +484,18 @@ var BackandService = (function () {
             .map(function (res) { return res.json().data; });
     };
     BackandService.prototype.filterItems = function (query) {
-        var data = JSON.stringify({
-            filter: [
-                {
-                    fieldName: 'name',
-                    operator: 'contains',
-                    value: query
-                }
-            ]
-        });
-        var $obs = this.http.post(this.api_url + '/1/objects/todo?returnObject=true', data, {
+        var filter = [
+            {
+                fieldName: 'name',
+                operator: 'contains',
+                value: query
+            }
+        ];
+        return this.http.get(this.api_url + '/1/objects/todo?filter=' + encodeURI(JSON.stringify(filter)), {
             headers: this.authHeader
         })
             .retry(3)
             .map(function (res) { return res.json().data; });
-        $obs.subscribe(function (data) {
-            console.log(data);
-        }, function (err) {
-            console.log(err);
-        }, function () { return console.log('Finish Filter'); });
-        return $obs;
     };
     BackandService.prototype.logError = function (err) {
         console.error('Error: ' + err);

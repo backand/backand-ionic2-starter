@@ -31,10 +31,10 @@ export class BackandService {
         socialLoginWithToken: '/1/user/PROVIDER/token'
     };
     
-    app_name:string = "appName";
-    signUpToken: string = 'sssssss';
-    anonymousToken: string = 'aaaaaaaa';
-    auth_status:string = "";
+    app_name:string = 'your app name';
+    signUpToken: string = 'your signup token';
+    anonymousToken: string = 'your anonymousToken token';
+    auth_status:string = '';
     auth_type:string;
     is_auth_error:boolean = false;
     auth_token:{ header_name : string, header_value: string};
@@ -265,52 +265,34 @@ export class BackandService {
                 headers: this.authHeader
             })
             .retry(3)
-            .map(res => {
-                console.log(res.json());
-                return res.json();
-            });
-
-
-           
+            .map(res => res.json());           
     }
 
     public getItems() {
-
         return this.http.get(this.api_url + '/1/objects/todo?returnObject=true', {
                 headers: this.authHeader
             })
             .retry(3)
             .map(res => res.json().data);
-
     }
 
     public filterItems(query) {
-        let data = JSON.stringify({ 
-            filter: [
+        let filter = 
+            [
               {
                 fieldName: 'name',
                 operator: 'contains',
                 value: query
               }
             ]
-        });
-        var $obs = this.http.post(this.api_url + '/1/objects/todo?returnObject=true', data,
+        ;
+
+        return this.http.get(this.api_url + '/1/objects/todo?filter=' + encodeURI(JSON.stringify(filter)), 
             {
                 headers: this.authHeader
             })
             .retry(3)
             .map(res => res.json().data);
-
-        $obs.subscribe(
-            data => {
-                console.log(data);
-            },
-            err => {
-                console.log(err);  
-            },
-            () => console.log('Finish Filter'));
-
-        return $obs;
     }
 
     public logError(err) {

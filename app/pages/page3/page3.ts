@@ -18,7 +18,7 @@ export class Page3 {
         
         this.backandService.postItem(this.name, this.description).subscribe(
                 data => {
-                    // add to begin of array
+                    // add to beginning of array
                     this.items.unshift({ id: null, name: this.name, description: this.description });
                     console.log(this.items);
                     this.name = '';
@@ -57,14 +57,6 @@ export class Page3 {
             .subscribe(
                 data => {
                     console.log("subscribe", data);
-                    // this.items = data.filter((v) => {
-                    //   if (v.name.toLowerCase().indexOf(q.toLowerCase()) > -1 || 
-                    //       v.description.toLowerCase().indexOf(q.toLowerCase()) > -1
-                    //   ) {
-                    //     return true;
-                    //   }
-                    //   return false;
-                    // });
                     this.items = data;
                 },
                 err => this.backandService.logError(err),
