@@ -2,12 +2,12 @@
 
 ## Running the app 
 
-1. Create an Ionic app:
+Create an Ionic app:
 
     ionic start myApp https://github.com/backand/backand-ionic2-starter
     cd myApp
 
-2. Run the app
+Run the app
     
     ionic serve
 
