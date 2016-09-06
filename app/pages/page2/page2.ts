@@ -14,7 +14,7 @@ export class Page2 {
   signUpPassword: string = '';
   confirmPassword: string = '';
 
-  constructor(public backandService:BackandService) {
+  constructor(private backandService:BackandService) {
 
 
   }
@@ -37,4 +37,15 @@ export class Page2 {
       () => console.log('Finish Auth'));
   }
 
+  public socialSignin(provider) {
+    var $obs = this.backandService.socialAuth(provider, true);
+    $obs.subscribe(                
+        data => {
+            console.log('Sign up succeeded with:' + provider);           
+        },
+        err => {
+            this.backandService.logError(err)
+        },
+        () => console.log('Finish Auth'));
+  }
 }

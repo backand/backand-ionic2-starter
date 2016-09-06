@@ -35,4 +35,18 @@
         <button (click)="signUp()" class="btn btn-success">Sign Up</button>
 
     </ion-list>
+    <div class="button-bar">
+        <button class="button button-positive icon-left ion-social-facebook" (click)="socialSignin('facebook')" type="button">
+            <ion-icon name="logo-facebook"></ion-icon>
+            Facebook
+        </button>
+        <button class="button button-positive icon-left ion-social-facebook ion-social-github" (click)="socialSignin('github')"type="button">
+            <ion-icon name="logo-github"></ion-icon>
+            Github
+        </button>
+        <button class="button button-positive icon-left ion-social-googleplus" (click)="socialSignin('google')" type="button">
+            <ion-icon name="logo-google"></ion-icon>
+            Google
+        </button>
+    </div>
 </ion-content>
