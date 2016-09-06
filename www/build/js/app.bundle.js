@@ -15,20 +15,24 @@ var ionic_native_1 = require('ionic-native');
 var tabs_1 = require('./pages/tabs/tabs');
 var backandService_1 = require('./services/backandService');
 var MyApp = (function () {
-    function MyApp(platform) {
+    function MyApp(platform, backandService) {
         this.platform = platform;
+        this.backandService = backandService;
         this.rootPage = tabs_1.TabsPage;
         platform.ready().then(function () {
             // Okay, so the platform is ready and our plugins are available.
             // Here you can do any higher level native things you might need.
             ionic_native_1.StatusBar.styleDefault();
+            var isMobile = platform.is('mobile');
+            backandService.setIsMobile(isMobile);
+            backandService.setRunSignupAfterErrorInSigninSocial(true);
         });
     }
     MyApp = __decorate([
         core_1.Component({
             template: '<ion-nav [root]="rootPage"></ion-nav>'
         }), 
-        __metadata('design:paramtypes', [ionic_angular_1.Platform])
+        __metadata('design:paramtypes', [ionic_angular_1.Platform, backandService_1.BackandService])
     ], MyApp);
     return MyApp;
 }());
@@ -152,6 +156,15 @@ var Page2 = (function () {
         $obs.subscribe(function (data) {
             alert('Sign up succeeded');
             _this.email = _this.signUpPassword = _this.confirmPassword = _this.firstName = _this.lastName = '';
+        }, function (err) {
+            _this.backandService.logError(err);
+        }, function () { return console.log('Finish Auth'); });
+    };
+    Page2.prototype.socialSignin = function (provider) {
+        var _this = this;
+        var $obs = this.backandService.socialAuth(provider, true);
+        $obs.subscribe(function (data) {
+            console.log('Sign up succeeded with:' + provider);
         }, function (err) {
             _this.backandService.logError(err);
         }, function () { return console.log('Finish Auth'); });
@@ -280,28 +293,56 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-require('rxjs/Rx');
+var EVENTS;
+(function (EVENTS) {
+    EVENTS[EVENTS["SIGNIN"] = 0] = "SIGNIN";
+    EVENTS[EVENTS["SIGNOUT"] = 1] = "SIGNOUT";
+    EVENTS[EVENTS["SIGNUP"] = 2] = "SIGNUP";
+})(EVENTS || (EVENTS = {}));
+;
+var URLS = {
+    signup: '/1/user/signup',
+    token: '/token',
+    requestResetPassword: '/1/user/requestResetPassword',
+    resetPassword: '/1/user/resetPassword',
+    changePassword: '/1/user/changePassword',
+};
+var ERRORS = {
+    NO_EMAIL_SOCIAL_ERROR: 'NO_EMAIL_SOCIAL',
+    NOT_SIGNEDIN_ERROR: 'The user is not signed up to',
+    ALREADY_SIGNEDUP_ERROR: 'The user already signed up to'
+};
+// get token or error message from url in social sign-in popup
+(function () {
+    var dataRegex = /\?(data|error)=(.+)/;
+    var dataMatch = dataRegex.exec(location.href);
+    if (dataMatch && dataMatch[1] && dataMatch[2]) {
+        var userData = {};
+        userData[dataMatch[1]] = JSON.parse(decodeURI(dataMatch[2].replace(/#.*/, '')));
+        window.opener.postMessage(JSON.stringify(userData), location.origin);
+    }
+}());
+var rxjs_1 = require('rxjs');
 var http_1 = require('@angular/http');
 var core_1 = require('@angular/core');
 var BackandService = (function () {
     function BackandService(http) {
         this.http = http;
         this.api_url = 'https://api.backand.com';
-        this.urls = {
-            signup: '/1/user/signup',
-            token: '/token',
-            requestResetPassword: '/1/user/requestResetPassword',
-            resetPassword: '/1/user/resetPassword',
-            changePassword: '/1/user/changePassword',
-            socialLoginWithCode: '/1/user/PROVIDER/code',
-            socialSignupWithCode: '/1/user/PROVIDER/signupCode',
-            socialLoginWithToken: '/1/user/PROVIDER/token'
-        };
-        this.app_name = 'y201605151206';
-        this.signUpToken = '02b99b1c-d933-44ee-8ccf-85ed98e761dd';
-        this.anonymousToken = 'a45c4c85-efa0-424b-b173-e6b6b0b8c388';
+        this.app_name = 'todo33353'; // 'y201605151206'; 
+        this.signUpToken = '215e5812-5789-4475-8ccb-42f3232da176';
+        this.anonymousToken = '43a174e6-1a88-46dd-9081-99d3d22131a6';
         this.auth_status = "";
         this.is_auth_error = false;
+        this.dummyReturnAddress = 'http://www.backandkuku.com';
+        this.socialProviders = {
+            github: { name: 'github', label: 'Github', url: 'www.github.com', css: 'github', id: 1 },
+            google: { name: 'google', label: 'Google', url: 'www.google.com', css: 'google-plus', id: 2 },
+            facebook: { name: 'facebook', label: 'Facebook', url: 'www.facebook.com', css: 'facebook', id: 3 },
+            twitter: { name: 'twitter', label: 'Twitter', url: 'www.twitter.com', css: 'twitter', id: 4 }
+        };
+        this.callSignupOnSingInSocialError = true;
+        this.isMobile = false;
         var storedToken = localStorage.getItem('auth_token');
         if (storedToken) {
             this.auth_token = JSON.parse(storedToken);
@@ -315,6 +356,12 @@ var BackandService = (function () {
             this.auth_token = { header_name: '', header_value: '' };
         }
     }
+    BackandService.prototype.setIsMobile = function (isMobile) {
+        this.isMobile = isMobile;
+    };
+    BackandService.prototype.setRunSignupAfterErrorInSigninSocial = function (signUpOnSignIn) {
+        this.callSignupOnSingInSocialError = signUpOnSignIn;
+    };
     BackandService.prototype.getAuthType = function () {
         return this.auth_type;
     };
@@ -330,10 +377,9 @@ var BackandService = (function () {
             ("&password=" + password) +
             ("&appName=" + this.app_name) +
             "&grant_type=password";
-        console.log(creds);
         var header = new http_1.Headers();
         header.append('Content-Type', 'application/x-www-form-urlencoded');
-        var url = this.api_url + this.urls.token;
+        var url = this.api_url + URLS.token;
         var $obs = this.http.post(url, creds, {
             headers: header
         })
@@ -343,6 +389,33 @@ var BackandService = (function () {
             localStorage.setItem('username', username);
         }, function (err) {
             console.log(err);
+        }, function () { return console.log('Finish Auth'); });
+        return $obs;
+    };
+    BackandService.prototype.signinWithToken = function (userData) {
+        var _this = this;
+        var tokenData = {
+            grant_type: 'password',
+            accessToken: userData.access_token,
+            appName: this.app_name
+        };
+        var creds = ("accessToken=" + userData.access_token) +
+            ("&appName=" + this.app_name) +
+            "&grant_type=password";
+        console.log(creds);
+        var header = new http_1.Headers();
+        header.append('Content-Type', 'application/x-www-form-urlencoded');
+        var url = this.api_url + URLS.token;
+        var $obs = this.http.post(url, creds, {
+            headers: header
+        })
+            .map(function (res) { return _this.getToken(res); });
+        $obs.subscribe(function (data) {
+            _this.setTokenHeader(data);
+            localStorage.setItem('username', userData.username);
+            _this.statusLogin.next(EVENTS.SIGNUP);
+        }, function (err) {
+            _this.statusLogin.error(err);
         }, function () { return console.log('Finish Auth'); });
         return $obs;
     };
@@ -361,7 +434,7 @@ var BackandService = (function () {
         };
         var header = new http_1.Headers();
         header.append('SignUpToken', this.signUpToken);
-        var $obs = this.http.post(this.api_url + this.urls.signup, creds, {
+        var $obs = this.http.post(this.api_url + URLS.signup, creds, {
             headers: header
         });
         $obs.subscribe(function (data) {
@@ -376,64 +449,154 @@ var BackandService = (function () {
             oldPassword: oldPassword,
             newPassword: newPassword
         };
-        var $obs = this.http.post(this.api_url + this.urls.changePassword, creds, {
+        var $obs = this.http.post(this.api_url + URLS.changePassword, creds, {
             headers: this.authHeader
         }).map(function (res) {
-            // this.getToken(res);
             console.log(res);
         });
         $obs.subscribe(function (data) {
-            // this.setTokenHeader(data)
             console.log(data);
         }, function (err) {
             console.log(err);
         }, function () { return console.log('Finish Change Password'); });
         return $obs;
     };
+    // public socialSigninWithToken(provider, token) {
+    //     let url = this.api_url + URLS.socialLoginWithToken.replace('PROVIDER', provider) + "?accessToken=" + encodeURIComponent(token) + "&appName=" + encodeURI(this.app_name);
+    //     this.clearAuthTokenSimple();
+    //     let headers = new Headers();
+    //     headers.append('Content-Type', 'application/json');
+    //     let $obs = this.http.get(url, 
+    //         {
+    //             headers: headers    
+    //         }
+    //     )
+    //     .map(res => res.json());
+    //     $obs.subscribe(
+    //         data => {            
+    //             this.setTokenHeader(data.access_token);
+    //             localStorage.setItem('user', data);
+    //             //     BackandHttpBufferService.retryAll();
+    //             //     this.statusLogin.next(true);
+    //             //     if (this.runSocket)
+    //             //         BackandSocketService.login(BKStorage.token.get(), this.anonymousToken, this.app_name, this.socketUrl);
+    //             //     }  
+    //         },
+    //         err => {
+    //             this.logError(err)
+    //         },
+    //         () => { }
+    //     );
+    //     return $obs;
+    // } 
+    BackandService.prototype.getSocialUrl = function (providerName, isSignup) {
+        var provider = this.socialProviders[providerName];
+        var action = isSignup ? 'up' : 'in';
+        return 'user/socialSign' + action +
+            '?provider=' + provider.label +
+            '&response_type=token&client_id=self&redirect_uri=' + provider.url +
+            '&state=';
+    };
+    BackandService.prototype.parseQueryString = function (queryString) {
+        var query = queryString.substr(queryString.indexOf('/?') + 2);
+        var breakdown = {};
+        var vars = query.split('&');
+        for (var i = 0; i < vars.length; i++) {
+            var pair = vars[i].split('=');
+            breakdown[pair[0]] = JSON.parse(pair[1]);
+        }
+        return breakdown;
+    };
+    BackandService.prototype.socialAuth = function (provider, isSignUp, spec, email) {
+        var _this = this;
+        if (spec === void 0) { spec = null; }
+        if (email === void 0) { email = null; }
+        this.statusLogin = new rxjs_1.Subject();
+        if (!this.socialProviders[provider]) {
+            throw Error('Unknown Social Provider');
+        }
+        if (this.isMobile) {
+            var windowUrl = this.api_url + '/1/'
+                + this.getSocialUrl(provider, isSignUp)
+                + '&appname=' + this.app_name + (email ? ("&email=" + email) : '')
+                + '&returnAddress=' + this.dummyReturnAddress;
+            this.socialAuthWindow = window.open(windowUrl, spec || 'left=1, top=1, width=600, height=600');
+            var source = rxjs_1.Observable.fromEvent(this.socialAuthWindow, 'loadstart');
+            source.subscribe(function (e) {
+                console.log('data', e);
+                if (e.url.indexOf(_this.dummyReturnAddress) == 0) {
+                    var url = e.url;
+                    // handle case of misformatted json from server
+                    if (url && url.indexOf('#_=_') > -1) {
+                        url = url.slice(0, url.lastIndexOf('#_=_'));
+                    }
+                    url = decodeURI(url);
+                    var breakdown = _this.parseQueryString(url);
+                    // error return from server
+                    if (breakdown.error) {
+                        if (!isSignUp && _this.callSignupOnSingInSocialError && breakdown.error.message.indexOf(ERRORS.NOT_SIGNEDIN_ERROR) > -1) {
+                            _this.socialAuth(provider, true, spec);
+                        }
+                        if (breakdown.error.message.indexOf(ERRORS.ALREADY_SIGNEDUP_ERROR) > -1) {
+                            _this.statusLogin.error(breakdown.error.message + ' (signing in with ' + breakdown.error.provider + ')');
+                        }
+                    }
+                    else {
+                        // login is OK
+                        var userData = breakdown.data;
+                        _this.signinWithToken(userData);
+                    }
+                    try {
+                        _this.socialAuthWindow.close();
+                    }
+                    catch (err) {
+                        console.log(err);
+                    }
+                }
+            });
+        }
+        else {
+            var windowUrl = this.api_url + '/1/'
+                + this.getSocialUrl(provider, isSignUp)
+                + '&appname=' + this.app_name + (email ? ("&email=" + email) : '')
+                + '&returnAddress=';
+            this.socialAuthWindow = window.open(windowUrl, 'id1', spec || 'left=1, top=1, width=600, height=600');
+            var source = rxjs_1.Observable.fromEvent(window, 'message');
+            var subscription = source.subscribe(function (e) {
+                // where does location come from ?
+                if (e.target.location.origin !== location.origin) {
+                    return;
+                }
+                var data = e.data;
+                // handle case of misformatted json from server   
+                if (data && data.indexOf('#_=_') > -1) {
+                    data = data.slice(0, data.lastIndexOf('#_=_'));
+                }
+                data = JSON.parse(data);
+                var error = data.error;
+                data = data.data;
+                if (error) {
+                    if (_this.callSignupOnSingInSocialError && error.message.indexOf(ERRORS.NOT_SIGNEDIN_ERROR) > -1) {
+                        _this.socialAuth(provider, true, spec);
+                    }
+                    if (isSignUp && error.message.indexOf(ERRORS.ALREADY_SIGNEDUP_ERROR) > -1) {
+                        _this.statusLogin.error(error.message + ' (signing in with ' + error.provider + ')');
+                    }
+                }
+                else {
+                    // login is OK                   
+                    var userData = data;
+                    _this.signinWithToken(userData);
+                }
+                e.target.removeEventListener('message');
+                _this.socialAuthWindow.close();
+                _this.socialAuthWindow = null;
+            });
+        }
+        return this.statusLogin;
+    };
     BackandService.prototype.extractErrorMessage = function (err) {
         return JSON.parse(err._body).error_description;
-    };
-    BackandService.prototype.requestResetPassword = function (email) {
-        var creds = {
-            email: email,
-            appName: this.app_name
-        };
-        var header = new http_1.Headers();
-        header.append('SignUpToken', this.signUpToken);
-        var $obs = this.http.post(this.urls.requestResetPassword, creds, {
-            headers: header
-        }).map(function (res) {
-            // this.getToken(res);
-            console.log(res);
-        });
-        $obs.subscribe(function (data) {
-            // this.setTokenHeader(data)
-            console.log(data);
-        }, function (err) {
-            console.log(err);
-        }, function () { return console.log('Finish Request Reset Password'); });
-        return $obs;
-    };
-    BackandService.prototype.resetPassword = function (newPassword, resetToken) {
-        var creds = {
-            newPassword: newPassword,
-            resetToken: resetToken
-        };
-        var header = new http_1.Headers();
-        header.append('SignUpToken', this.signUpToken);
-        var $obs = this.http.post(this.urls.resetPassword, creds, {
-            headers: header
-        }).map(function (res) {
-            // this.getToken(res);
-            console.log(res);
-        });
-        $obs.subscribe(function (data) {
-            // this.setTokenHeader(data)
-            console.log(data);
-        }, function (err) {
-            console.log(err);
-        }, function () { return console.log('Finish Reset Password'); });
-        return $obs;
     };
     BackandService.prototype.useAnoymousAuth = function () {
         this.setAnonymousHeader();
@@ -456,7 +619,6 @@ var BackandService = (function () {
         localStorage.setItem('auth_token', JSON.stringify(token));
     };
     BackandService.prototype.getToken = function (res) {
-        console.log(res);
         return res.json().access_token;
     };
     Object.defineProperty(BackandService.prototype, "authHeader", {
@@ -508,7 +670,7 @@ var BackandService = (function () {
 }());
 exports.BackandService = BackandService;
 
-},{"@angular/core":153,"@angular/http":241,"rxjs/Rx":520}],7:[function(require,module,exports){
+},{"@angular/core":153,"@angular/http":241,"rxjs":520}],7:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
