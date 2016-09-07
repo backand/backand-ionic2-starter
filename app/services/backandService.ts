@@ -132,15 +132,9 @@ export class BackandService {
 
 
     public signinWithToken(userData) {
-        let tokenData = {
-            grant_type: 'password',
-            accessToken: userData.access_token,
-            appName: this.app_name
-        };
         let creds = `accessToken=${userData.access_token}` +
             `&appName=${this.app_name}` +
             `&grant_type=password`;
-        console.log(creds);
         let header = new Headers();
         header.append('Content-Type', 'application/x-www-form-urlencoded');
         let url = this.api_url + URLS.token;
@@ -299,7 +293,6 @@ export class BackandService {
                        
             let source = Observable.fromEvent(this.socialAuthWindow, 'loadstart')               
             source.subscribe((e: any) => {
-                console.log('data', e);
                 if (e.url.indexOf(this.dummyReturnAddress) == 0) { // mean startWith
                     
                     var url = e.url;

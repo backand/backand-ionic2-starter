@@ -20,7 +20,6 @@ export class Page2 {
   }
 
   public signUp() {
-    console.log('signUp');
     if (this.signUpPassword != this.confirmPassword){
       alert('Passwords should match');
       return;
