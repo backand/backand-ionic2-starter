@@ -2,12 +2,16 @@
 
 ## Running the app 
 
-Create an Ionic app:
+1. Create an Ionic app:
 
     ionic start myApp https://github.com/backand/backand-ionic2-starter --v2
     cd myApp
 
-Run the app
+2. Install Cordova Plugins
+
+    ionic plugin add cordova-plugin-inappbrowser
+
+3. Run the app
     
     ionic serve
 
