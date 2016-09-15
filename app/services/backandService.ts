@@ -15,7 +15,8 @@ const URLS = {
     requestResetPassword: '/1/user/requestResetPassword',
     resetPassword: '/1/user/resetPassword',
     changePassword: '/1/user/changePassword',
-    // socialLoginWithToken: '/1/user/PROVIDER/token'
+    socialLoginWithToken: '/1/user/PROVIDER/token',
+    socketUrl: 'https://api.backand.com:4000'
 }
 
 const ERRORS = {
@@ -38,7 +39,8 @@ const ERRORS = {
 import {Observable, BehaviorSubject, Subject} from 'rxjs';
 import {Http, Headers, HTTP_BINDINGS, URLSearchParams} from '@angular/http'
 import {Injectable} from '@angular/core';
-
+import {Facebook} from 'ionic-native';
+import * as io from 'socket.io-client';
 
 @Injectable()
 export class BackandService {
@@ -66,6 +68,7 @@ export class BackandService {
     socialAuthWindow: any;
     isMobile: boolean = false;
     statusLogin: Subject<EVENTS>;
+    socket: SocketIOClient.Socket;;
 
 
     constructor(public http:Http) {
@@ -77,10 +80,12 @@ export class BackandService {
             if (this.auth_type == 'Token'){
                 this.username = localStorage.getItem('username');
             }
+            this.loginSocket(this.auth_token.header_value, this.anonymousToken, this.app_name);
         }    
         else{
             this.auth_token = {header_name: '', header_value: ''};
         }
+        
     }
 
     public setIsMobile(isMobile: boolean) {
@@ -120,6 +125,7 @@ export class BackandService {
                 data => {
                     this.setTokenHeader(data)
                     localStorage.setItem('username', username);
+                    this.loginSocket(data, this.anonymousToken, this.app_name);
                 },
                 err => {
                     console.log(err);
@@ -148,6 +154,7 @@ export class BackandService {
                 data => {
                     this.setTokenHeader(data)
                     localStorage.setItem('username', userData.username);
+                    this.loginSocket(data, this.anonymousToken, this.app_name);
                     this.statusLogin.next(EVENTS.SIGNUP);   
                 },
                 err => {
@@ -219,39 +226,37 @@ export class BackandService {
         return $obs;
     }
 
-    // public socialSigninWithToken(provider, token) {
+    public socialSigninWithToken(provider, token) {
 
-    //     let url = this.api_url + URLS.socialLoginWithToken.replace('PROVIDER', provider) + "?accessToken=" + encodeURIComponent(token) + "&appName=" + encodeURI(this.app_name);
-    //     this.clearAuthTokenSimple();
-    //     let headers = new Headers();
-    //     headers.append('Content-Type', 'application/json');
-    //     let $obs = this.http.get(url, 
-    //         {
-    //             headers: headers    
-    //         }
-    //     )
-    //     .map(res => res.json());
         
-    //     $obs.subscribe(
-    //         data => {            
-    //             this.setTokenHeader(data.access_token);
-    //             localStorage.setItem('user', data);
-    //             //     BackandHttpBufferService.retryAll();
-    //             //     this.statusLogin.next(true);
-    //             //     if (this.runSocket)
-    //             //         BackandSocketService.login(BKStorage.token.get(), this.anonymousToken, this.app_name, this.socketUrl);
-    //             //     }  
+        let url = this.api_url + URLS.socialLoginWithToken.replace('PROVIDER', provider) + "?accessToken=" + encodeURIComponent(token) + "&appName=" + encodeURI(this.app_name) + "&signupIfNotSignedIn=true";
+        this.clearAuthTokenSimple();
+        let headers = new Headers();
+        headers.append('Content-Type', 'application/json');
+        let $obs = this.http.get(url, 
+            {
+                headers: headers    
+            }
+        )
+        .map(res => res.json());
+        
+        $obs.subscribe(
+            data => {            
+                this.setTokenHeader(data.access_token);
+                localStorage.setItem('user', data);
+                this.loginSocket(data.access_token, this.anonymousToken, this.app_name);
+                this.statusLogin.next(EVENTS.SIGNUP);   
+            },
+            err => {
+                this.logError(err);
+                this.statusLogin.error(err);
+            },
+            () => { }
+        );
 
-    //         },
-    //         err => {
-    //             this.logError(err)
-    //         },
-    //         () => { }
-    //     );
+        return $obs;
 
-    //     return $obs;
-
-    // } 
+    } 
 
     private getSocialUrl(providerName: string, isSignup: boolean) {
         let provider = this.socialProviders[providerName];
@@ -276,7 +281,9 @@ export class BackandService {
 
     public socialAuth(provider: string, isSignUp: boolean, spec: any = null, email: string = null) 
     {
-        this.statusLogin = new Subject<EVENTS>();
+        if (!this.statusLogin){
+            this.statusLogin = new Subject<EVENTS>();
+        }
         
         if (!this.socialProviders[provider]) {
             throw Error('Unknown Social Provider');
@@ -293,6 +300,7 @@ export class BackandService {
                        
             let source = Observable.fromEvent(this.socialAuthWindow, 'loadstart')               
             source.subscribe((e: any) => {
+
                 if (e.url.indexOf(this.dummyReturnAddress) == 0) { // mean startWith
                     
                     var url = e.url;
@@ -380,6 +388,37 @@ export class BackandService {
         return this.statusLogin;
     } 
 
+    public inAppSocial(provider: string) {
+        if (this.isMobile){
+            let that: any = this;
+            if (!this.statusLogin){
+                this.statusLogin = new Subject<EVENTS>();
+            }
+            let permissions: string[] = ['public_profile', 'email'];
+            Facebook.login(permissions).then( 
+                function(data) {
+                    console.log(data);
+                    if (data.status.toLowerCase() == 'connected'){
+                        let token: string = data.authResponse.accessToken;
+                        that.socialSigninWithToken(provider, token); 
+                    }
+                    else{
+                       that.statusLogin.error(data.status); 
+                    }
+
+                },
+                function(err) {
+                    console.log(err);
+                    that.statusLogin.error(err);
+                }
+            );
+            return this.statusLogin;
+        }
+        else{
+            this.socialAuth(provider, true);
+        }
+    }
+
     public extractErrorMessage(err) {
         return JSON.parse(err._body).error_description;
     }
@@ -454,6 +493,41 @@ export class BackandService {
             })
             .retry(3)
             .map(res => res.json().data);
+    }
+
+    public loginSocket(token, anonymousToken, appName) {
+    
+
+        this.socket = io.connect(URLS.socketUrl, {'forceNew':true });
+
+        this.socket.on('connect', () => {
+            console.log('connected');
+            this.socket.emit("login", token, anonymousToken, appName);
+        });
+
+        this.socket.on('disconnect', () => {
+            console.log('disconnect');
+        });
+
+        this.socket.on('reconnecting', () => {
+          console.log('reconnecting');
+        });
+
+        this.socket.on('error', (error: string) => {
+          console.log('error: ${error}');
+        });
+
+    }
+
+    public logoutSocket() {
+        if (this.socket){
+            this.socket.close();
+        }
+    }
+
+    public subscribeSocket(eventName: string) {
+        let socketStream = Observable.fromEvent(this.socket, eventName);
+        return socketStream;
     }
 
     public logError(err) {

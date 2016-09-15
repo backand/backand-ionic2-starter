@@ -47,4 +47,16 @@ export class Page2 {
         },
         () => console.log('Finish Auth'));
   }
+
+  public inAppSocial(provider) {
+    var $obs = this.backandService.inAppSocial(provider);
+    $obs.subscribe(                
+        data => {
+            console.log('Sign up succeeded with:' + provider);           
+        },
+        err => {
+            this.backandService.logError(err)
+        },
+        () => console.log('Finish Auth'));
+  }
 }

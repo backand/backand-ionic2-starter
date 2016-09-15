@@ -12,6 +12,21 @@ export class Page3 {
 
     constructor(public backandService:BackandService) {   
         this.searchQuery = '';
+      
+        this.backandService.subscribeSocket("items_updated")
+            .subscribe(
+                data => {
+                    let a = data as any[];
+                    let newItem = {};
+                    a.forEach((kv)=> newItem[kv.Key] = kv.Value);
+                    this.items.unshift(newItem);
+                },
+                err => {
+                    console.log(err);
+                },
+                () => console.log('received update from socket')
+        );
+
     }
 
     public postItem() {
@@ -26,7 +41,7 @@ export class Page3 {
                 },
                 err => this.backandService.logError(err),
                 () => console.log('OK')
-            );;
+            );
     }
 
     public getItems() {
