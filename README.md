@@ -5,6 +5,7 @@
 1. Create an Ionic app:
 
     ionic start myApp https://github.com/backand/backand-ionic2-starter --v2
+
     cd myApp
 
 2. Install Cordova Plugins
@@ -71,13 +72,13 @@ Add to `typings.json` the global dependencies:
 5. To subscribe to event `items_updated` from server side via sockets, 
 call `BackandService.on` and in your controller, subscribe with,
 
-    this.backandService.on('items_updated')
-      .subscribe(
-            data => {
-             
-            },
-            err => {
-                console.log(err);
-            },
-            () => console.log('received update from socket')
-        );
+      this.backandService.on('items_updated')
+          .subscribe(
+                data => {
+                 
+                },
+                err => {
+                    console.log(err);
+                },
+                () => console.log('received update from socket')
+            );
