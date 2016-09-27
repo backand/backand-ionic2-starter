@@ -13,7 +13,7 @@ export class Page3 {
     constructor(public backandService:BackandService) {   
         this.searchQuery = '';
       
-        this.backandService.subscribeSocket("items_updated")
+        this.backandService.on("items_updated")
             .subscribe(
                 data => {
                     let a = data as any[];
@@ -48,7 +48,7 @@ export class Page3 {
        this.backandService.getItems()
             .subscribe(
                 data => {
-                    console.log("subscribe", data);
+                    console.log(data);
                     this.items = data;
                 },
                 err => this.backandService.logError(err),

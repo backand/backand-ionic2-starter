@@ -11,32 +11,15 @@
 
     ionic plugin add cordova-plugin-inappbrowser
 
+3. Set details of your app:
+
+    backandService.setAppName('your app name');
+    backandService.setSignUpToken('your signup token');
+    backandService.setAnonymousToken('your anonymousToken token');
+
 3. Run the app
     
     ionic serve
-
-## Customize for Your App
-
-In file, `app/services/backandService.ts`, in `BackandService`, set this local variables:
-
-    
-    app_name:string = 'your app name';
-    signUpToken: string = 'your signup token';
-    anonymousToken: string = 'your anonymousToken token';
-
-## Setup of Platform
-
-This is done in `app.ts`,  within `platform.ready()`,
-
-* Are we on a mobile or desktop browser?
-
-      let isMobile = platform.is('mobile');
-      backandService.setIsMobile(isMobile);
-
-* Do we call signup if we tried to sign in via a social networkm and 
- the user is not signed up for the app?
-
-    backandService.setRunSignupAfterErrorInSigninSocial(true);
 
 ## CRUD
 
@@ -86,9 +69,9 @@ Add to `typings.json` the global dependencies:
 4. To logout from socket call `BackandService.logoutSocket`
 
 5. To subscribe to event `items_updated` from server side via sockets, 
-call `BackandService.susbcribeSocket` and in your controller, subscribe with,
+call `BackandService.on` and in your controller, subscribe with,
 
-    this.backandService.subscribeSocket('items_updated')
+    this.backandService.on('items_updated')
       .subscribe(
             data => {
              

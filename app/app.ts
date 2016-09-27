@@ -19,9 +19,10 @@ export class MyApp {
       // Okay, so the platform is ready and our plugins are available.
       // Here you can do any higher level native things you might need.
       StatusBar.styleDefault();
-      let isMobile = platform.is('mobile');
-      backandService.setIsMobile(isMobile);
-      backandService.setRunSignupAfterErrorInSigninSocial(true);
+      backandService.setIsMobile(platform.is('mobile'));
+      backandService.setAppName('your app name'');
+      backandService.setSignUpToken('your signup token');
+      backandService.setAnonymousToken('your anonymousToken token');
     });
   }
 }

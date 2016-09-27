@@ -2,14 +2,13 @@
  * Created by backand on 3/23/16.
  */
 
-enum EVENTS  {
+export enum EVENTS {
     SIGNIN,
     SIGNOUT,
     SIGNUP
 };
 
-
-const URLS = {
+export const URLS = {
     signup: '/1/user/signup',
     token: '/token',
     requestResetPassword: '/1/user/requestResetPassword',
@@ -19,7 +18,7 @@ const URLS = {
     socketUrl: 'https://api.backand.com:4000'
 }
 
-const ERRORS = {
+export const ERRORS = {
     NO_EMAIL_SOCIAL_ERROR: 'NO_EMAIL_SOCIAL', 
     NOT_SIGNEDIN_ERROR: 'The user is not signed up to',
     ALREADY_SIGNEDUP_ERROR: 'The user already signed up to'
@@ -45,30 +44,32 @@ import * as io from 'socket.io-client';
 @Injectable()
 export class BackandService {
 
-
-    api_url:string = 'https://api.backand.com';    
-    app_name:string = 'your app name';
-    signUpToken: string = 'your signup token';
-    anonymousToken: string = 'your anonymousToken token';
-    auth_status:string = "";
-    auth_type:string;
-    is_auth_error:boolean = false;
-    auth_token:{ header_name : string, header_value: string};
-    username: string;
-    dummyReturnAddress: string = 'http://www.backandkuku.com';
-
-    socialProviders: any = {
+    private api_url: string = 'https://api.backand.com';  
+    private socialProviders: any = {
         github: {name: 'github', label: 'Github', url: 'www.github.com', css: 'github', id: 1},
         google: {name: 'google', label: 'Google', url: 'www.google.com', css: 'google-plus', id: 2},
         facebook: {name: 'facebook', label: 'Facebook', url: 'www.facebook.com', css: 'facebook', id: 3},
         twitter: {name: 'twitter', label: 'Twitter', url: 'www.twitter.com', css: 'twitter', id: 4}
-    };
+    }; 
+    private dummyReturnAddress: string = 'http://www.backandkuku.com';
+    
+    // configuration variables
+    private app_name:string = 'your app name';
+    private signUpToken: string = 'your signup token';
+    private anonymousToken: string = 'your anonymousToken token';
+    private callSignupOnSingInSocialError: boolean = true;
+    private isMobile: boolean = false;
 
-    callSignupOnSingInSocialError: boolean = true;
-    socialAuthWindow: any;
-    isMobile: boolean = false;
-    statusLogin: Subject<EVENTS>;
-    socket: SocketIOClient.Socket;;
+    // authentication state
+    private auth_status:string = "";
+    private auth_type:string;
+    private is_auth_error:boolean = false;
+    private auth_token:{ header_name : string, header_value: string};
+    private username: string;
+    
+    private socialAuthWindow: any;
+    private statusLogin: Subject<EVENTS>;
+    private socket: SocketIOClient.Socket;;
 
 
     constructor(public http:Http) {
@@ -88,6 +89,7 @@ export class BackandService {
         
     }
 
+    // configuration of SDK
     public setIsMobile(isMobile: boolean) {
         this.isMobile = isMobile;
     }
@@ -96,18 +98,22 @@ export class BackandService {
         this.callSignupOnSingInSocialError = signUpOnSignIn;
     }
 
-    public getAuthType():string {
-        return this.auth_type;
+    public setAppName(appName: string) {
+        this.app_name = appName;
     }
 
-    public getAuthStatus():string {
-        return this.auth_status;
+    public setAnonymousToken(anonymousToken) {
+        this.anonymousToken = anonymousToken;
+        return this;
     }
 
-    public getUsername():string {
-        return this.username;
+    public setSignUpToken(signUpToken) {
+        this.signUpToken = signUpToken;
+        return this;
     }
 
+     
+    // methods
     public getAuthTokenSimple(username, password) {       
         let creds = `username=${username}` +
             `&password=${password}` +
@@ -229,7 +235,7 @@ export class BackandService {
     public socialSigninWithToken(provider, token) {
 
         
-        let url = this.api_url + URLS.socialLoginWithToken.replace('PROVIDER', provider) + "?accessToken=" + encodeURIComponent(token) + "&appName=" + encodeURI(this.app_name) + "&signupIfNotSignedIn=true";
+        let url = this.api_url + URLS.socialLoginWithToken.replace('PROVIDER', provider) + "?accessToken=" + encodeURIComponent(token) + "&appName=" + encodeURI(this.app_name) + "&signupIfNotSignedIn=" + this.callSignupOnSingInSocialError ? "true" : "false";
         this.clearAuthTokenSimple();
         let headers = new Headers();
         headers.append('Content-Type', 'application/json');
@@ -257,27 +263,6 @@ export class BackandService {
         return $obs;
 
     } 
-
-    private getSocialUrl(providerName: string, isSignup: boolean) {
-        let provider = this.socialProviders[providerName];
-        let action = isSignup ? 'up' : 'in';
-        return 'user/socialSign' + action +
-            '?provider=' + provider.label +
-            '&response_type=token&client_id=self&redirect_uri=' + provider.url +
-            '&state=';
-    }
-
-    private parseQueryString(queryString): any {
-        let query = queryString.substr(queryString.indexOf('/?') + 2);
-        let breakdown = {};
-        let vars = query.split('&');
-        for (var i = 0; i < vars.length; i++) {
-            var pair = vars[i].split('=');
-            breakdown[pair[0]] = JSON.parse(pair[1]);
-        }
-        return breakdown;
-    }
-
 
     public socialAuth(provider: string, isSignUp: boolean, spec: any = null, email: string = null) 
     {
@@ -419,44 +404,6 @@ export class BackandService {
         }
     }
 
-    public extractErrorMessage(err) {
-        return JSON.parse(err._body).error_description;
-    }
-
-    public useAnoymousAuth() {      
-        this.setAnonymousHeader();
-    }
-
-    private setTokenHeader(jwt) {
-        if (jwt) {
-            this.auth_token.header_name = "Authorization";
-            this.auth_token.header_value = "Bearer " + jwt;
-            this.storeAuthToken(this.auth_token);
-        }
-    }
-
-    public setAnonymousHeader() {
-        this.auth_status = "OK";
-        this.auth_token.header_name = "AnonymousToken";
-        this.auth_token.header_value = this.anonymousToken;
-        this.storeAuthToken(this.auth_token);
-        localStorage.setItem('username', 'Anonymous');
-    }
-
-    private storeAuthToken(token) {
-        localStorage.setItem('auth_token', JSON.stringify(token));
-    }
-
-    private getToken(res) {
-        return res.json().access_token;
-    }
-
-    private get authHeader() {
-        var authHeader = new Headers();
-        authHeader.append(this.auth_token.header_name, this.auth_token.header_value);
-        return authHeader;
-    }
-
     public postItem(name, description) {
         let data = JSON.stringify({ name: name, description: description });
 
@@ -525,9 +472,79 @@ export class BackandService {
         }
     }
 
-    public subscribeSocket(eventName: string) {
+    public on(eventName: string) {
         let socketStream = Observable.fromEvent(this.socket, eventName);
         return socketStream;
+    }
+
+    public getAuthType():string {
+        return this.auth_type;
+    }
+
+    public getAuthStatus():string {
+        return this.auth_status;
+    }
+
+    public getUsername():string {
+        return this.username;
+    }
+
+    private getSocialUrl(providerName: string, isSignup: boolean) {
+        let provider = this.socialProviders[providerName];
+        let action = isSignup ? 'up' : 'in';
+        return 'user/socialSign' + action +
+            '?provider=' + provider.label +
+            '&response_type=token&client_id=self&redirect_uri=' + provider.url +
+            '&state=';
+    }
+
+    private parseQueryString(queryString): any {
+        let query = queryString.substr(queryString.indexOf('/?') + 2);
+        let breakdown = {};
+        let vars = query.split('&');
+        for (var i = 0; i < vars.length; i++) {
+            var pair = vars[i].split('=');
+            breakdown[pair[0]] = JSON.parse(pair[1]);
+        }
+        return breakdown;
+    }
+
+    public extractErrorMessage(err) {
+        return JSON.parse(err._body).error_description;
+    }
+
+    public useAnoymousAuth() {      
+        this.setAnonymousHeader();
+    }
+
+    private setTokenHeader(jwt) {
+        if (jwt) {
+            this.auth_token.header_name = "Authorization";
+            this.auth_token.header_value = "Bearer " + jwt;
+            this.storeAuthToken(this.auth_token);
+        }
+    }
+
+    private setAnonymousHeader() {
+        this.auth_status = "OK";
+        this.auth_token.header_name = "AnonymousToken";
+        this.auth_token.header_value = this.anonymousToken;
+        this.storeAuthToken(this.auth_token);
+        localStorage.setItem('username', 'Anonymous');
+    }
+
+    private storeAuthToken(token) {
+        localStorage.setItem('auth_token', JSON.stringify(token));
+    }
+
+    private getToken(res) {
+        return res.json().access_token;
+    }
+
+    private get authHeader() {
+        var authHeader = new Headers();
+        authHeader.append(this.auth_token.header_name, this.auth_token.header_value);
+        return authHeader;
     }
 
     public logError(err) {
