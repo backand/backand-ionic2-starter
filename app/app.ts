@@ -20,7 +20,7 @@ export class MyApp {
       // Here you can do any higher level native things you might need.
       StatusBar.styleDefault();
       backandService.setIsMobile(platform.is('mobile'));
-      backandService.setAppName('your app name'');
+      backandService.setAppName('your app name');
       backandService.setSignUpToken('your signup token');
       backandService.setAnonymousToken('your anonymousToken token');
     });
