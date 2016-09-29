@@ -15,7 +15,7 @@ export const URLS = {
     resetPassword: '/1/user/resetPassword',
     changePassword: '/1/user/changePassword',
     socialLoginWithToken: '/1/user/PROVIDER/token',
-    socketUrl: 'https://api.backand.com:4000'
+    socketUrl: 'https://socket.backand.com'
 }
 
 export const ERRORS = {
@@ -81,7 +81,10 @@ export class BackandService {
             if (this.auth_type == 'Token'){
                 this.username = localStorage.getItem('username');
             }
-            this.loginSocket(this.auth_token.header_value, this.anonymousToken, this.app_name);
+            this.app_name = localStorage.getItem('app_name');
+            this.anonymousToken = localStorage.getItem('anonymousToken');
+            this.loginSocket(this.auth_token.header_value, 
+                this.anonymousToken, this.app_name);
         }    
         else{
             this.auth_token = {header_name: '', header_value: ''};
@@ -100,16 +103,17 @@ export class BackandService {
 
     public setAppName(appName: string) {
         this.app_name = appName;
+        localStorage.setItem('app_name', appName);
     }
 
     public setAnonymousToken(anonymousToken) {
         this.anonymousToken = anonymousToken;
-        return this;
+        localStorage.setItem('anonymousToken', anonymousToken);
     }
 
     public setSignUpToken(signUpToken) {
         this.signUpToken = signUpToken;
-        return this;
+        localStorage.setItem('signUpToken', signUpToken);
     }
 
      
@@ -232,10 +236,12 @@ export class BackandService {
         return $obs;
     }
 
-    public socialSigninWithToken(provider, token) {
-
+    public socialSigninWithToken(provider, token) {  
         
-        let url = this.api_url + URLS.socialLoginWithToken.replace('PROVIDER', provider) + "?accessToken=" + encodeURIComponent(token) + "&appName=" + encodeURI(this.app_name) + "&signupIfNotSignedIn=" + this.callSignupOnSingInSocialError ? "true" : "false";
+        let url = this.api_url + URLS.socialLoginWithToken.replace('PROVIDER', provider) + 
+            "?accessToken=" + encodeURIComponent(token) + 
+            "&appName=" + encodeURI(this.app_name) + 
+            "&signupIfNotSignedIn=" + (this.callSignupOnSingInSocialError ? "true" : "false");
         this.clearAuthTokenSimple();
         let headers = new Headers();
         headers.append('Content-Type', 'application/json');
