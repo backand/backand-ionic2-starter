@@ -12,7 +12,7 @@
 
     ionic plugin add cordova-plugin-inappbrowser
 
-3. Set details of your app:
+3. Set details of your app in app/app.ts:
 
     backandService.setAppName('your app name');
     backandService.setSignUpToken('your signup token');
