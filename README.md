@@ -1,24 +1,29 @@
 # Backand Ionic 2 Starter
 
+Compatible with Ionic 2.0.0-rc.0
+
 ## Running the app 
 
 1. Create an Ionic app:
 
     ionic start myApp https://github.com/backand/backand-ionic2-starter --v2
-
     cd myApp
 
 2. Install Cordova Plugins
 
     ionic plugin add cordova-plugin-inappbrowser
 
-3. Set details of your app in app/app.ts:
+3. Set details of your app in `src/app/app.component.ts`:
 
     backandService.setAppName('your app name');
     backandService.setSignUpToken('your signup token');
     backandService.setAnonymousToken('your anonymousToken token');
 
-3. Run the app
+4. Install dependency:
+
+    npm install socket.io-client --save-dev
+
+5. Run the app
     
     ionic serve
 
@@ -51,26 +56,7 @@ Use `BackandService` function `inappSocial`
 
 ## Socket Service
 
-1. Add to `package.json` the dependency, 
-  
-    "socket.io-client": "^1.4.8"
-  
-Add to `typings.json` the global dependencies:
-
-    "node": "registry:dt/node#6.0.0+20160514165920",
-    "socket.io-client": "registry:dt/socket.io-client#1.4.4+20160317120654"
-   
-2. Install dependencies
-
-  npm install
-  typings install
-  
-3. To login via socket call `BackandService.loginSocket`
-    
-4. To logout from socket call `BackandService.logoutSocket`
-
-5. To subscribe to event `items_updated` from server side via sockets, 
-call `BackandService.on` and in your controller, subscribe with,
+1. To subscribe to event `items_updated` from server side via sockets, in your component do, as in `src/app/pages/crud/crud.ts`:
 
       
       this.backandService.on('items_updated')
