@@ -21,7 +21,7 @@ Compatible with Ionic 2.0.0-rc.0
 
 4. Install dependency:
 
-    npm install socket.io-client --save-dev
+    npm install socket.io-client --save
 
 5. Run the app
     
