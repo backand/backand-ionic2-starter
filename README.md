@@ -7,6 +7,7 @@ Compatible with Ionic 2.0.0-rc.0
 1. Create an Ionic app:
 
     ionic start myApp https://github.com/backand/backand-ionic2-starter --v2
+    
     cd myApp
 
 2. Install Cordova Plugins
@@ -16,12 +17,18 @@ Compatible with Ionic 2.0.0-rc.0
 3. Set details of your app in `src/app/app.component.ts`:
 
     backandService.setAppName('your app name');
+
     backandService.setSignUpToken('your signup token');
+    
     backandService.setAnonymousToken('your anonymousToken token');
 
-4. Install dependency:
+4. Install dependencies:
 
     npm install socket.io-client --save
+
+    npm install @types/node --save-dev --save-exact
+
+    npm install @types/socket.io-client --save-dev --save-exact
 
 5. Run the app
     
