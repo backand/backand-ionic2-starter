@@ -285,7 +285,8 @@ export class BackandService {
             let windowUrl = this.api_url + '/1/'
                 + this.getSocialUrl(provider, isSignUp)
                 + '&appname=' + this.app_name + (email ? ("&email=" + email) : '')
-                + '&returnAddress=' + this.dummyReturnAddress;                              
+                + '&returnAddress=' + this.dummyReturnAddress
+                + "&signupIfNotSignedIn=" + (this.callSignupOnSingInSocialError ? "true" : "false");                             
             this.socialAuthWindow = window.open(
                 windowUrl,
                 spec || 'left=1, top=1, width=600, height=600');
@@ -335,7 +336,8 @@ export class BackandService {
             let windowUrl =  this.api_url + '/1/'
                 + this.getSocialUrl(provider, isSignUp)
                 + '&appname=' + this.app_name + (email ? ("&email=" + email) : '')
-                + '&returnAddress=';
+                + '&returnAddress='
+                + "&signupIfNotSignedIn=" + (this.callSignupOnSingInSocialError ? "true" : "false");
             this.socialAuthWindow = window.open(windowUrl,
                 'id1',
                 spec || 'left=1, top=1, width=600, height=600'

@@ -37,7 +37,7 @@ export class SignupPage {
   }
 
   public socialSignin(provider) {
-    var $obs = this.backandService.socialAuth(provider, true);
+    var $obs = this.backandService.socialAuth(provider, false);
     $obs.subscribe(                
         data => {
             console.log('Sign up succeeded with:' + provider);           
