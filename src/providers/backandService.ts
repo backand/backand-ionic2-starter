@@ -451,6 +451,33 @@ export class BackandService {
             .map(res => res.json().data);
     }
 
+    public upload(objectName: string, fileActionName: string, filename: string, filedata: string) {
+        let headers = this.authHeader;
+        headers.append('Content-Type', 'application/json');
+        let data = JSON.stringify({
+            'filename': filename,
+            'filedata': filedata.substr(filedata.indexOf(',') + 1, filedata.length) //need to remove the file prefix type
+        });
+        return this.http.post(
+            this.api_url + URLS.actionUrl +  objectName + '?name=' + fileActionName,
+            data, 
+            {
+                headers: headers
+            } 
+        );
+    }
+
+    public deleteFile(objectName: string, fileActionName: string, filename: string) {
+        let headers = this.authHeader;
+        headers.append('Content-Type', 'application/json');  
+        return this.http.delete(
+            this.api_url + URLS.actionUrl +  objectName + '?name=' + fileActionName + "&filename=" + filename,
+            {
+                headers: headers
+            }
+        );   
+    }
+
     public loginSocket(token, anonymousToken, appName) {
     
 
