@@ -15,7 +15,8 @@ export const URLS = {
     resetPassword: '/1/user/resetPassword',
     changePassword: '/1/user/changePassword',
     socialLoginWithToken: '/1/user/PROVIDER/token',
-    socketUrl: 'https://socket.backand.com'
+    socketUrl: 'https://socket.backand.com',
+    actionUrl: '/1/objects/action/'
 }
 
 export const ERRORS = {
@@ -71,25 +72,14 @@ export class BackandService {
     private statusLogin: Subject<EVENTS>;
     private socket: SocketIOClient.Socket;;
 
-
     constructor(public http:Http) {
-        let storedToken = localStorage.getItem('auth_token');
-        if (storedToken){
-            this.auth_token = JSON.parse(storedToken);
-            this.auth_type = this.auth_token.header_name == 'Anonymous' ? 'Anonymous' : 'Token';
-            this.auth_status = 'OK';
-            if (this.auth_type == 'Token'){
-                this.username = localStorage.getItem('username');
-            }
-            this.app_name = localStorage.getItem('app_name');
-            this.anonymousToken = localStorage.getItem('anonymousToken');
+        if (this.setAuthenticationState()){
             this.loginSocket(this.auth_token.header_value, 
                 this.anonymousToken, this.app_name);
-        }    
+        }
         else{
             this.auth_token = {header_name: '', header_value: ''};
-        }
-        
+        }     
     }
 
     // configuration of SDK
@@ -129,12 +119,14 @@ export class BackandService {
         var $obs = this.http.post(url, creds, {
                 headers: header
             })
-            .map(res => this.getToken(res));
+            .map(res => res.json());
 
           $obs.subscribe(
                 data => {
-                    this.setTokenHeader(data)
+                    this.setTokenHeader(data.access_token)
                     localStorage.setItem('username', username);
+                    localStorage.setItem('user', data);
+                    this.setAuthenticationState();
                     this.loginSocket(data, this.anonymousToken, this.app_name);
                 },
                 err => {
@@ -157,13 +149,14 @@ export class BackandService {
         var $obs = this.http.post(url, creds, {
                 headers: header
             })
-            .map(res => this.getToken(res));
+            .map(res => res.json());
 
 
           $obs.subscribe(
                 data => {
-                    this.setTokenHeader(data)
-                    localStorage.setItem('username', userData.username);
+                    this.setTokenHeader(data.access_token);
+                    localStorage.setItem('username', data.username);
+                    localStorage.setItem('user', data);
                     this.loginSocket(data, this.anonymousToken, this.app_name);
                     this.statusLogin.next(EVENTS.SIGNUP);   
                 },
@@ -180,6 +173,7 @@ export class BackandService {
         this.auth_token = {header_name: '', header_value: ''};
         localStorage.removeItem('auth_token');
         localStorage.removeItem('username');
+        this.setAuthenticationState();
     }
 
     public signUp(email, password, confirmPassword, firstName, lastName): Observable<any> {
@@ -271,7 +265,15 @@ export class BackandService {
 
     } 
 
-    public socialAuth(provider: string, isSignUp: boolean, spec: any = null, email: string = null) 
+    public socialSignin(provider: string, spec: any = null, email: string = null) {
+        return this.socialAuth(provider, false, spec, email);
+    }
+
+    public socialSignup(provider: string, spec: any = null, email: string = null) {
+        return this.socialAuth(provider, true, spec, email);
+    }
+
+    private socialAuth(provider: string, isSignUp: boolean, spec: any = null, email: string = null) 
     {
         if (!this.statusLogin){
             this.statusLogin = new Subject<EVENTS>();
@@ -286,7 +288,7 @@ export class BackandService {
                 + this.getSocialUrl(provider, isSignUp)
                 + '&appname=' + this.app_name + (email ? ("&email=" + email) : '')
                 + '&returnAddress=' + this.dummyReturnAddress
-                + "&signupIfNotSignedIn=" + (this.callSignupOnSingInSocialError ? "true" : "false");                             
+                + "&signupIfNotSignedIn=" + (this.callSignupOnSingInSocialError ? "true" : "false");                              
             this.socialAuthWindow = window.open(
                 windowUrl,
                 spec || 'left=1, top=1, width=600, height=600');
@@ -413,10 +415,11 @@ export class BackandService {
         }
     }
 
-    public postItem(name, description) {
+
+    public postItem(object, name, description) {
         let data = JSON.stringify({ name: name, description: description });
 
-        return this.http.post(this.api_url + '/1/objects/todo?returnObject=true', data,
+        return this.http.post(this.api_url + '/1/objects/' + object + '?returnObject=true', data,
             {
                 headers: this.authHeader
             })
@@ -424,15 +427,15 @@ export class BackandService {
             .map(res => res.json());           
     }
 
-    public getItems() {
-        return this.http.get(this.api_url + '/1/objects/todo?returnObject=true', {
+    public getItems(object) {
+        return this.http.get(this.api_url + '/1/objects/' + object + '?returnObject=true', {
                 headers: this.authHeader
             })
             .retry(3)
             .map(res => res.json().data);
     }
 
-    public filterItems(query) {
+    public filterItems(object, query) {
         let filter = 
             [
               {
@@ -443,7 +446,7 @@ export class BackandService {
             ]
         ;
 
-        return this.http.get(this.api_url + '/1/objects/todo?filter=' + encodeURI(JSON.stringify(filter)), 
+        return this.http.get(this.api_url + '/1/objects/' + object + '?filter=' + encodeURI(JSON.stringify(filter)), 
             {
                 headers: this.authHeader
             })
@@ -521,35 +524,6 @@ export class BackandService {
         return this.auth_status;
     }
 
-
-    private getSocialUrl(providerName: string, isSignup: boolean) {
-        let provider = this.socialProviders[providerName];
-        let action = isSignup ? 'up' : 'in';
-        return 'user/socialSign' + action +
-            '?provider=' + provider.label +
-            '&response_type=token&client_id=self&redirect_uri=' + provider.url +
-            '&state=';
-    }
-
-    private parseQueryString(queryString): any {
-        let query = queryString.substr(queryString.indexOf('/?') + 2);
-        let breakdown = {};
-        let vars = query.split('&');
-        for (var i = 0; i < vars.length; i++) {
-            var pair = vars[i].split('=');
-            breakdown[pair[0]] = JSON.parse(pair[1]);
-        }
-        return breakdown;
-    }
-
-    public extractErrorMessage(err) {
-        return JSON.parse(err._body).error_description;
-    }
-
-    public useAnonymousAuth() {      
-        this.setAnonymousHeader();
-    }
-
     // user details
     public getUsername():string {
         return this.username;
@@ -591,6 +565,53 @@ export class BackandService {
         else{
             return null;
         }
+    }
+
+    private setAuthenticationState(): boolean {
+        let storedToken = localStorage.getItem('auth_token');
+        if (storedToken){
+            this.auth_token = JSON.parse(storedToken);
+            this.auth_type = this.auth_token.header_name == 'Anonymous' ? 'Anonymous' : 'Token';
+            this.auth_status = 'OK';
+            if (this.auth_type == 'Token'){
+                this.username = localStorage.getItem('username');
+            }
+            this.app_name = localStorage.getItem('app_name');
+            this.anonymousToken = localStorage.getItem('anonymousToken');
+            return true;
+        }    
+        else{
+            this.auth_token = {header_name: '', header_value: ''};
+            return false;
+        }
+    }
+
+    private getSocialUrl(providerName: string, isSignup: boolean) {
+        let provider = this.socialProviders[providerName];
+        let action = isSignup ? 'up' : 'in';
+        return 'user/socialSign' + action +
+            '?provider=' + provider.label +
+            '&response_type=token&client_id=self&redirect_uri=' + provider.url +
+            '&state=';
+    }
+
+    private parseQueryString(queryString): any {
+        let query = queryString.substr(queryString.indexOf('/?') + 2);
+        let breakdown = {};
+        let vars = query.split('&');
+        for (var i = 0; i < vars.length; i++) {
+            var pair = vars[i].split('=');
+            breakdown[pair[0]] = JSON.parse(pair[1]);
+        }
+        return breakdown;
+    }
+
+    public extractErrorMessage(err) {
+        return JSON.parse(err._body).error_description;
+    }
+
+    public useAnonymousAuth() {      
+        this.setAnonymousHeader();
     }
 
     private setTokenHeader(jwt) {

@@ -33,7 +33,7 @@ export class CrudPage {
 
     public postItem() {
         
-        this.backandService.postItem(this.name, this.description).subscribe(
+        this.backandService.postItem('todo', this.name, this.description).subscribe(
                 data => {
                     // add to beginning of array
                     this.items.unshift({ id: null, name: this.name, description: this.description });
@@ -47,7 +47,7 @@ export class CrudPage {
     }
 
     public getItems() {
-       this.backandService.getItems()
+       this.backandService.getItems('todo')
             .subscribe(
                 data => {
                     console.log(data);
@@ -70,7 +70,7 @@ export class CrudPage {
             q = q.trim();
         }
 
-        this.backandService.filterItems(q)
+        this.backandService.filterItems('todo', q)
             .subscribe(
                 data => {
                     console.log("subscribe", data);
