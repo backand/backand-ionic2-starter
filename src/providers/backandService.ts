@@ -415,11 +415,48 @@ export class BackandService {
         }
     }
 
-
-    public postItem(object, name, description) {
-        let data = JSON.stringify({ name: name, description: description });
+    public postItem(object, item) {
+        let data = JSON.stringify(item);
 
         return this.http.post(this.api_url + '/1/objects/' + object + '?returnObject=true', data,
+            {
+                headers: this.authHeader
+            })
+            .retry(3)
+            .map(res => res.json());           
+    }
+
+    public post(object: string, item: any, deep: boolean = false, returnObject: boolean = false) {
+        let data: string = JSON.stringify(item);
+        let query: string = '';
+        if (returnObject){
+            query += 'returnObject=true';
+        }
+        if (deep){
+            query += query ? '&deep = true' : 'deep=true';
+        }
+
+
+        return this.http.post(this.api_url + '/1/objects/' + object + (query ? '?' + query : ''), data,
+            {
+                headers: this.authHeader
+            })
+            .retry(3)
+            .map(res => res.json());           
+    }
+
+    public put(object: string, id: string, item: any, deep: boolean = false, returnObject: boolean = false) {
+        let data: string = JSON.stringify(item);
+        let query: string = '';
+        if (returnObject){
+            query += 'returnObject=true';
+        }
+        if (deep){
+            query += query ? '&deep = true' : 'deep=true';
+        }
+
+
+        return this.http.put(this.api_url + '/1/objects/' + object + '/' + id + (query ? '?' + query : ''), data,
             {
                 headers: this.authHeader
             })
@@ -435,23 +472,94 @@ export class BackandService {
             .map(res => res.json().data);
     }
 
-    public filterItems(object, query) {
-        let filter = 
-            [
-              {
-                fieldName: 'name',
-                operator: 'contains',
-                value: query
-              }
-            ]
-        ;
+    public getListObjects(object: string, pageSize: number = null, pageNumber: number = null, 
+        filter: any = null, 
+        sort: any = null,
+        deep: boolean = false, 
+        search: string = null,
+        exclude: string[] = null, relatedObjects: boolean = true) {
+        let query: string = '';
+        let queryParams : string[];
 
+        if (deep){
+            queryParams.push('deep=true');
+        }
+        if (relatedObjects){
+            queryParams.push('relatedObjects=true');
+        }
+        if (exclude){
+            queryParams.push(exclude.join(','));
+        }
+        if (pageSize){
+            queryParams.push('pageSize=' + pageSize);
+        }
+        if (pageNumber){
+            queryParams.push('pageNumber=' + pageNumber);
+        }
+        if (filter){
+            queryParams.push('filter=' + encodeURI(JSON.stringify(filter)));
+        }
+        if (sort){
+            queryParams.push('sort=' + encodeURI(JSON.stringify(sort)));
+        }
+        if (search){
+            queryParams.push('search=' + search);
+        }
+        if (queryParams.length > 0){
+            query = '?' + queryParams.join('&');
+        }
+
+        return this.http.get(this.api_url + '/1/objects/' + object + query, {
+                headers: this.authHeader
+            })
+            .retry(3)
+            .map(res => res.json().data);
+    }
+
+    public getObject(object: string, id: string, deep: boolean = false, exclude: string[] = null, level: number = null) {
+        let query: string = '';
+        let queryParams : string[];
+
+        if (deep){
+            queryParams.push('deep=true');
+        }
+        if (exclude){
+            queryParams.push(exclude.join(','));
+        }
+        if (level){
+            queryParams.push('level=' + level);
+        }
+        if (queryParams.length > 0){
+            query = '?' + queryParams.join(',');
+        }
+
+        return this.http.get(this.api_url + '/1/objects/' + object + '/' + id + query, {
+                headers: this.authHeader
+            })
+            .retry(3)
+            .map(res => res.json().data);
+    }
+
+
+    public filterItems(object, filter) {
+        
         return this.http.get(this.api_url + '/1/objects/' + object + '?filter=' + encodeURI(JSON.stringify(filter)), 
             {
                 headers: this.authHeader
             })
             .retry(3)
             .map(res => res.json().data);
+    }
+
+    public delete(object: string, id: string) {
+        let headers = this.authHeader;
+        headers.append('Content-Type', 'application/json');  
+        return this.http.delete(
+            this.api_url + '/1/objects/' + object + '/' + id,
+            {
+                headers: headers
+            }
+        );   
     }
 
     public upload(objectName: string, fileActionName: string, filename: string, filedata: string) {
