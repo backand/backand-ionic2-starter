@@ -37,7 +37,7 @@ Compatible with Ionic 2.0.0-rc.0
 ## CRUD
 
 To fetch, create, and filter rows, from an object, say `stuff`, modify 
-the `url` used in these functions:
+the object used in these functions:
 
     getItems
     filterItems
