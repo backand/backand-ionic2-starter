@@ -108,7 +108,7 @@ export class BackandService {
 
      
     // methods
-    public getAuthTokenSimple(username, password): Observable<any> {       
+    public signin(username, password): Observable<any> {       
         let creds = `username=${username}` +
             `&password=${password}` +
             `&appName=${this.app_name}` +
@@ -125,7 +125,7 @@ export class BackandService {
                 data => {
                     this.setTokenHeader(data.access_token)
                     localStorage.setItem('username', username);
-                    localStorage.setItem('user', data);
+                    localStorage.setItem('user', JSON.stringify(data));
                     this.setAuthenticationState();
                     this.loginSocket(data, this.anonymousToken, this.app_name);
                 },
@@ -139,7 +139,7 @@ export class BackandService {
     }
 
 
-    public signinWithToken(userData): Observable<any> {
+    private signinWithToken(userData): Observable<any> {
         let creds = `accessToken=${userData.access_token}` +
             `&appName=${this.app_name}` +
             `&grant_type=password`;
@@ -169,14 +169,15 @@ export class BackandService {
            
     }
 
-    public clearAuthTokenSimple() {
+    public signout() {
         this.auth_token = {header_name: '', header_value: ''};
         localStorage.removeItem('auth_token');
         localStorage.removeItem('username');
+        localStorage.removeItem('user');
         this.setAuthenticationState();
     }
 
-    public signUp(email, password, confirmPassword, firstName, lastName): Observable<any> {
+    public signup(email, password, confirmPassword, firstName, lastName): Observable<any> {
         let creds = {
                 firstName: firstName,
                 lastName: lastName,
@@ -230,14 +231,14 @@ export class BackandService {
         return $obs;
     }
 
-    public socialSigninWithToken(provider, token): Observable<any> {
+    private socialSigninWithToken(provider, token): Observable<any> {
 
         let url = this.api_url + URLS.socialLoginWithToken.replace('PROVIDER', provider) + 
             "?accessToken=" + encodeURIComponent(token) + 
             "&appName=" + encodeURI(this.app_name) + 
             "&signupIfNotSignedIn=" + (this.callSignupOnSingInSocialError ? "true" : "false");
 
-        this.clearAuthTokenSimple();
+        this.signout();
         let headers = new Headers();
         headers.append('Content-Type', 'application/json');
         let $obs = this.http.get(url, 
@@ -415,18 +416,7 @@ export class BackandService {
         }
     }
 
-    public postItem(object, item) {
-        let data = JSON.stringify(item);
-
-        return this.http.post(this.api_url + '/1/objects/' + object + '?returnObject=true', data,
-            {
-                headers: this.authHeader
-            })
-            .retry(3)
-            .map(res => res.json());           
-    }
-
-    public post(object: string, item: any, deep: boolean = false, returnObject: boolean = false) {
+    public create(object: string, item: any, deep: boolean = false, returnObject: boolean = false) {
         let data: string = JSON.stringify(item);
         let query: string = '';
         if (returnObject){
@@ -445,7 +435,7 @@ export class BackandService {
             .map(res => res.json());           
     }
 
-    public put(object: string, id: string, item: any, deep: boolean = false, returnObject: boolean = false) {
+    public update(object: string, id: string, item: any, deep: boolean = false, returnObject: boolean = false) {
         let data: string = JSON.stringify(item);
         let query: string = '';
         if (returnObject){
@@ -464,22 +454,19 @@ export class BackandService {
             .map(res => res.json());           
     }
 
-    public getItems(object) {
-        return this.http.get(this.api_url + '/1/objects/' + object + '?returnObject=true', {
-                headers: this.authHeader
-            })
-            .retry(3)
-            .map(res => res.json().data);
-    }
 
-    public getListObjects(object: string, pageSize: number = null, pageNumber: number = null, 
+
+    public getList(object: string, 
+        pageSize: number = null, 
+        pageNumber: number = null, 
         filter: any = null, 
         sort: any = null,
         deep: boolean = false, 
         search: string = null,
-        exclude: string[] = null, relatedObjects: boolean = true) {
+        exclude: string[] = null, 
+        relatedObjects: boolean = false) {
         let query: string = '';
-        let queryParams : string[];
+        let queryParams : string[] = [];
 
         if (deep){
             queryParams.push('deep=true');
@@ -516,9 +503,9 @@ export class BackandService {
             .map(res => res.json().data);
     }
 
-    public getObject(object: string, id: string, deep: boolean = false, exclude: string[] = null, level: number = null) {
+    public getOne(object: string, id: string, deep: boolean = false, exclude: string[] = null, level: number = null) {
         let query: string = '';
-        let queryParams : string[];
+        let queryParams : string[] = [];
 
         if (deep){
             queryParams.push('deep=true');
@@ -540,17 +527,6 @@ export class BackandService {
             .map(res => res.json().data);
     }
 
-
-    public filterItems(object, filter) {
-        
-        return this.http.get(this.api_url + '/1/objects/' + object + '?filter=' + encodeURI(JSON.stringify(filter)), 
-            {
-                headers: this.authHeader
-            })
-            .retry(3)
-            .map(res => res.json().data);
-    }
-
     public delete(object: string, id: string) {
         let headers = this.authHeader;
         headers.append('Content-Type', 'application/json');  
@@ -562,7 +538,7 @@ export class BackandService {
         );   
     }
 
-    public upload(objectName: string, fileActionName: string, filename: string, filedata: string) {
+    public uploadFile(objectName: string, fileActionName: string, filename: string, filedata: string) {
         let headers = this.authHeader;
         headers.append('Content-Type', 'application/json');
         let data = JSON.stringify({

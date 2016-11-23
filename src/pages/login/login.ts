@@ -32,7 +32,7 @@ export class LoginPage {
     public getAuthTokenSimple() {
 
         this.auth_type = 'Token';
-        var $obs = this.backandService.getAuthTokenSimple(this.username, this.password);
+        var $obs = this.backandService.signin(this.username, this.password);
         $obs.subscribe(
             data => {
                 this.auth_status = 'OK';
@@ -61,7 +61,7 @@ export class LoginPage {
 
     public signOut() {
         this.auth_status = null;
-        this.backandService.clearAuthTokenSimple();
+        this.backandService.signout();
     }
 
 
