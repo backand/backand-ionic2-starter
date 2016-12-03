@@ -524,7 +524,7 @@ export class BackandService {
                 headers: this.authHeader
             })
             .retry(3)
-            .map(res => res.json().data);
+            .map(res => res.json());
     }
 
     public delete(object: string, id: string) {
