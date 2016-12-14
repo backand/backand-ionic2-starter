@@ -231,6 +231,35 @@ export class BackandService {
         return $obs;
     }
 
+    public requestResetPassword(userName: string) { 
+        let header = new Headers();
+        header.append('Content-Type', 'application/x-www-form-urlencoded');
+        let data = { 
+            appName: this.app_name, 
+            username: userName
+        };
+        return this.http.post(this.api_url + URLS.requestResetPassword, data, 
+            {
+                headers: header
+            }
+        );
+    }
+
+    public resetPassword(newPassword, resetToken) {
+        let header = new Headers();
+        header.append('Content-Type', 'application/x-www-form-urlencoded');
+        let data = {
+            newPassword: newPassword,
+            resetToken: resetToken
+        };
+        return this.http.post(this.api_url +  URLS.resetPassword, data, 
+            {
+                headers: header
+            }
+        );
+    }
+
+
     private socialSigninWithToken(provider, token): Observable<any> {
 
         let url = this.api_url + URLS.socialLoginWithToken.replace('PROVIDER', provider) + 
@@ -724,7 +753,9 @@ export class BackandService {
 
     private get authHeader() {
         var authHeader = new Headers();
-        authHeader.append(this.auth_token.header_name, this.auth_token.header_value);
+        if (this.auth_token && this.auth_token.header_name && this.auth_token.header_value){
+            authHeader.append(this.auth_token.header_name, this.auth_token.header_value);
+        }
         return authHeader;
     }
 
