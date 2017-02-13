@@ -70,7 +70,7 @@ export class BackandService {
     
     private socialAuthWindow: any;
     private statusLogin: Subject<EVENTS>;
-    private socket: SocketIOClient.Socket;;
+    private socket: SocketIOClient.Socket;
 
     constructor(public http:Http) {
         if (this.setAuthenticationState()){
