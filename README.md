@@ -65,7 +65,7 @@ Use `BackandService` function `inappSocial`
 
 1. To subscribe to event `items_updated` from server side via sockets, in your component do, as in `src/app/pages/crud/crud.ts`:
 
-      
+      ```javascript
       this.backandService.on('items_updated')
           .subscribe(
                 data => {
@@ -76,3 +76,4 @@ Use `BackandService` function `inappSocial`
                 },
                 () => console.log('received update from socket')
             );
+        ```  
